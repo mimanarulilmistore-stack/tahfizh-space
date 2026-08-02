@@ -4,7 +4,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // 1. DAFARKAN RUTE PUBLIK (Bypass Proteksi Login)
+  // 1. BYPASS PROTEKSI AUTH UNTUK RUTE PUBLIK SANTRI
+  // Rute /santri/ dan aset statis sistem bebas diakses tanpa login
   if (
     pathname.startsWith('/santri/') ||
     pathname.startsWith('/_next') ||
@@ -15,7 +16,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // 2. PROTEKSI RUTE ADMIN / PENGAJAR
+  // 2. PROTEKSI RUTE PRIVAT ADMIN / PENGAJAR
   let supabaseResponse = NextResponse.next({
     request,
   })

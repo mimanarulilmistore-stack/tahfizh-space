@@ -1,102 +1,111 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { Badge } from '@/src/utils/badgeCalculator';
-import { Award, Lock, CheckCircle2 } from 'lucide-react';
+import React, { useRef } from "react";
+import { QRCodeSVG } from "qrcode.react";
 
-interface SantriBadgesGridProps {
-  badges: Badge[];
-  showOnlyUnlocked?: boolean;
+interface SantriQRCodeCardProps {
+  santri: {
+    id: string;
+    name: string;
+    uniqueCode: string; // Contoh: 'SANTRI-001'
+    classGroup?: string;
+  };
+  baseUrl?: string; // Menampung domain Vercel (opsional)
 }
 
-export default function SantriBadgesGrid({ 
-  badges, 
-  showOnlyUnlocked = false 
-}: SantriBadgesGridProps) {
-  const displayedBadges = showOnlyUnlocked 
-    ? badges.filter(b => b.isUnlocked) 
-    : badges;
+export default function SantriQRCodeCard({
+  santri,
+  baseUrl,
+}: SantriQRCodeCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  const unlockedCount = badges.filter(b => b.isUnlocked).length;
+  // Penentuan Origin Domain (Otomatis mengambil domain Vercel saat dipublikasikan)
+  const origin =
+    baseUrl ||
+    (typeof window !== "undefined"
+      ? window.location.origin
+      : "https://tahfizh-space.vercel.app");
+
+  // Dynamic Magic Link: URL unik langsung menuju profil santri bersangkutan
+  const qrTargetUrl = `${origin}/santri/${santri.uniqueCode}`;
+
+  // Fungsi untuk mengunduh QR Code sebagai gambar SVG/Cetak Kartu
+  const handleDownloadQR = () => {
+    const svgElement = cardRef.current?.querySelector("svg");
+    if (!svgElement) return;
+
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const svgUrl = URL.createObjectURL(svgBlob);
+
+    const downloadLink = document.createElement("a");
+    downloadLink.href = svgUrl;
+    downloadLink.download = `QR-Santri-${santri.uniqueCode}-${santri.name.replace(/\s+/g, "_")}.svg`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(svgUrl);
+  };
 
   return (
-    <div className="space-y-4">
-      
-      {/* HEADER BADGES STATS */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div className="flex items-center gap-2">
-          <Award className="w-5 h-5 text-amber-400" />
-          <h3 className="text-sm font-bold text-white tracking-wide">
-            Lencana & Pencapaian Santri
-          </h3>
+    <div className="w-full max-w-sm rounded-2xl border border-emerald-100 bg-white p-6 shadow-xl dark:border-emerald-950 dark:bg-slate-900 transition-all duration-300 hover:shadow-2xl">
+      {/* Header Kartu */}
+      <div className="mb-5 text-center">
+        <div className="inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 mb-2">
+          Kartu Akses Wali Santri
         </div>
-        <span className="text-xs font-mono font-semibold px-2.5 py-1 bg-amber-950/60 border border-amber-800/80 text-amber-300 rounded-lg">
-          {unlockedCount} / {badges.length} Terbuka
-        </span>
+        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+          {santri.name}
+        </h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Kode Unik: <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{santri.uniqueCode}</span>
+          {santri.classGroup && ` • ${santri.classGroup}`}
+        </p>
       </div>
 
-      {/* GRID LENCANA */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {displayedBadges.map((badge) => (
-          <div
-            key={badge.id}
-            className={`relative overflow-hidden rounded-xl p-3.5 border transition-all duration-300 flex flex-col justify-between ${
-              badge.isUnlocked
-                ? 'bg-slate-900/90 border-slate-700/80 shadow-lg hover:border-slate-500 hover:scale-[1.02]'
-                : 'bg-slate-950/40 border-slate-800/60 opacity-60 grayscale'
-            }`}
+      {/* Kontainer QR Code */}
+      <div
+        ref={cardRef}
+        className="flex flex-col items-center justify-center rounded-xl bg-emerald-50/50 p-6 border border-emerald-100 dark:bg-slate-800/50 dark:border-slate-700"
+      >
+        <div className="rounded-lg bg-white p-4 shadow-sm dark:bg-slate-900">
+          <QRCodeSVG
+            value={qrTargetUrl}
+            size={180}
+            bgColor={"#FFFFFF"}
+            fgColor={"#047857"} // Emerald 700
+            level={"H"} // High error correction
+            includeMargin={false}
+          />
+        </div>
+        <p className="mt-4 text-center text-xs text-slate-500 dark:text-slate-400 max-w-[220px]">
+          Pindai QR ini untuk membuka portal mutaba'ah & capaian hafalan secara langsung.
+        </p>
+      </div>
+
+      {/* Tombol Aksi */}
+      <div className="mt-6 flex gap-3">
+        <button
+          onClick={handleDownloadQR}
+          className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            {/* ACCENT GLOW SAAT UNLOCKED */}
-            {badge.isUnlocked && (
-              <div 
-                className={`absolute -top-10 -right-10 w-20 h-20 bg-gradient-to-br ${badge.color} opacity-20 blur-xl rounded-full pointer-events-none`} 
-              />
-            )}
-
-            <div>
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <span className="text-2xl filter drop-shadow">{badge.icon}</span>
-                {badge.isUnlocked ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                ) : (
-                  <Lock className="w-4 h-4 text-slate-600 shrink-0" />
-                )}
-              </div>
-
-              <h4 className="text-xs font-bold text-white leading-snug">
-                {badge.name}
-              </h4>
-              <p className="text-[10px] text-slate-400 mt-1 leading-normal line-clamp-2">
-                {badge.description}
-              </p>
-            </div>
-
-            {/* PROGRESS BAR UNTUK BADGE YANG BELUM UNLOCKED */}
-            {!badge.isUnlocked && (
-              <div className="mt-3 pt-2 border-t border-slate-800/60">
-                <div className="flex justify-between items-center text-[9px] text-slate-500 font-mono mb-1">
-                  <span>Progress</span>
-                  <span>{badge.currentValue}/{badge.targetValue}</span>
-                </div>
-                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full transition-all duration-500"
-                    style={{ width: `${badge.progressPercentage}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {badge.isUnlocked && (
-              <div className="mt-3 pt-1 text-[9px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Tercapai
-              </div>
-            )}
-          </div>
-        ))}
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+            ></path>
+          </svg>
+          Unduh QR Code
+        </button>
       </div>
-
     </div>
   );
 }
