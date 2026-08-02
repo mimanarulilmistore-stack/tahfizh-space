@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Badge } from '@/utils/badgeCalculator';
+import { Badge } from '@/src/utils/badgeCalculator';
 import { Award, Lock, CheckCircle2 } from 'lucide-react';
 
 interface SantriBadgesGridProps {
