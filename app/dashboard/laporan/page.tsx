@@ -1,21 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
 import { getBrowserSupabase } from '@/src/lib/supabase';
-import { 
-  FileText, 
-  Printer, 
-  ArrowLeft, 
-  RefreshCw, 
-  UserCheck, 
-  Users, 
-  BookOpen, 
-  Award, 
-  Calendar,
+import { computeJuzProgress, getSantriLevel } from '@/src/utils/badgeCalculator';
+import {
+  FileText,
+  Printer,
+  ArrowLeft,
+  RefreshCw,
+  UserCheck,
+  Users,
+  BookOpen,
   Filter,
-  CheckCircle2
+  AlertCircle,
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -31,35 +30,52 @@ interface SantriProfile {
 interface SetoranRecord {
   id: string;
   santri_id: string;
-  tanggal: string;
-  jenis_setoran: string; // 'ziyadah' | 'murajaah'
-  surah: string;
-  ayat_mulai: number;
-  ayat_selesai: number;
-  nilai_kuantitas: string;
-  nilai_kualitas: string;
+  jenis_setoran: string;
+  nama_surah: string | null;
+  juz: number | null;
+  juz_selesai: boolean | null;
+  ayat_mulai: number | null;
+  ayat_selesai: number | null;
+  nilai_kelancaran: string | null;
+  nilai_tajwid: string | null;
   catatan: string | null;
+  tanggal_setoran: string | null;
+  created_at: string;
+}
+
+function formatTanggal(item: SetoranRecord) {
+  const raw = item.tanggal_setoran || item.created_at;
+  if (!raw) return '-';
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw;
+  return d.toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
 
 export default function LaporanDashboardPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
+  const [loadingSetoran, setLoadingSetoran] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [reportType, setReportType] = useState<'individual' | 'rekap'>('individual');
-  
+
   const [santriList, setSantriList] = useState<SantriProfile[]>([]);
-  const [selectedSantriId, setSelectedSantriId] = useState<string>('');
+  const [selectedSantriId, setSelectedSantriId] = useState('');
   const [setoranData, setSetoranData] = useState<SetoranRecord[]>([]);
-  
-  // Filter Tanggal
+
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // 1. Fetch Daftar Santri & Inisialisasi Sesi
   useEffect(() => {
     const initPage = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (!session) {
           router.push('/login');
           return;
@@ -73,12 +89,12 @@ export default function LaporanDashboardPage() {
 
         if (error) throw error;
 
-        if (profiles && profiles.length > 0) {
-          setSantriList(profiles);
-          setSelectedSantriId(profiles[0].id);
-        }
-      } catch (err) {
+        const list = profiles || [];
+        setSantriList(list);
+        if (list.length > 0) setSelectedSantriId(list[0].id);
+      } catch (err: any) {
         console.error('Error fetching profiles:', err);
+        setErrorMsg(err.message || 'Gagal memuat daftar santri.');
       } finally {
         setLoading(false);
       }
@@ -87,52 +103,71 @@ export default function LaporanDashboardPage() {
     initPage();
   }, [router]);
 
-  // 2. Fetch Data Setoran Berdasarkan Santri / Filter
   useEffect(() => {
     const fetchSetoran = async () => {
-      if (!selectedSantriId && reportType === 'individual') return;
+      if (reportType === 'individual' && !selectedSantriId) {
+        setSetoranData([]);
+        return;
+      }
+
+      setLoadingSetoran(true);
+      setErrorMsg(null);
 
       try {
         let query = supabase
           .from('setoran_hafalan')
-          .select('*')
-          .order('tanggal', { ascending: false });
+          .select(
+            'id, santri_id, jenis_setoran, nama_surah, juz, juz_selesai, ayat_mulai, ayat_selesai, nilai_kelancaran, nilai_tajwid, catatan, tanggal_setoran, created_at'
+          )
+          .order('tanggal_setoran', { ascending: false })
+          .order('created_at', { ascending: false });
 
         if (reportType === 'individual' && selectedSantriId) {
           query = query.eq('santri_id', selectedSantriId);
         }
 
+        // Filter tanggal memakai tanggal_setoran (fallback: created_at di sisi tampilan)
         if (startDate) {
-          query = query.gte('tanggal', startDate);
+          query = query.gte('tanggal_setoran', startDate);
         }
         if (endDate) {
-          query = query.lte('tanggal', endDate);
+          query = query.lte('tanggal_setoran', endDate);
         }
 
         const { data, error } = await query;
         if (error) throw error;
 
-        setSetoranData(data || []);
-      } catch (err) {
+        setSetoranData((data || []) as SetoranRecord[]);
+      } catch (err: any) {
         console.error('Error fetching setoran history:', err);
+        setErrorMsg(err.message || 'Gagal memuat riwayat setoran.');
+        setSetoranData([]);
+      } finally {
+        setLoadingSetoran(false);
       }
     };
 
-    if (!loading) {
-      fetchSetoran();
-    }
+    if (!loading) fetchSetoran();
   }, [selectedSantriId, reportType, startDate, endDate, loading]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
-  const selectedSantri = santriList.find(s => s.id === selectedSantriId);
+  const selectedSantri = santriList.find((s) => s.id === selectedSantriId);
 
-  // Kalkulasi Metrik Santri Terpilih
-  const totalSetoran = setoranData.length;
-  const totalZiyadah = setoranData.filter(s => s.jenis_setoran === 'ziyadah').length;
-  const totalMurajaah = setoranData.filter(s => s.jenis_setoran === 'murajaah').length;
+  const individualProgress = useMemo(
+    () => computeJuzProgress(setoranData),
+    [setoranData]
+  );
+  const individualLevel = getSantriLevel(individualProgress.juzSelesaiCount);
+
+  const rekapRows = useMemo(() => {
+    return santriList.map((santri) => {
+      const rows = setoranData.filter((s) => s.santri_id === santri.id);
+      const progress = computeJuzProgress(rows);
+      const level = getSantriLevel(progress.juzSelesaiCount);
+      return { santri, progress, level, count: progress.totalSetoran };
+    });
+  }, [santriList, setoranData]);
 
   if (loading) {
     return (
@@ -147,18 +182,14 @@ export default function LaporanDashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans print:bg-white print:text-black print:min-h-0">
-      
-      {/* HEADER NAVIGATION (HIDDEN ON PRINT) */}
       <div className="print:hidden">
         <HeaderAdmin />
       </div>
 
       <div className="p-4 sm:p-6 lg:p-8 print:p-0">
         <div className="max-w-6xl mx-auto space-y-6 print:max-w-none print:space-y-0">
-          
-          {/* CONTROL PANEL UTAMA (HIDDEN ON PRINT) */}
+          {/* CONTROL PANEL */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl print:hidden space-y-6">
-            
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
               <div>
                 <button
@@ -172,22 +203,27 @@ export default function LaporanDashboardPage() {
                   Laporan & Rapor Progress Santri
                 </h1>
                 <p className="text-xs text-slate-400 mt-1">
-                  Cetak rapor individual santri untuk wali murid atau rekapitulasi capaian seluruh kelas.
+                  Cetak rapor individual atau rekapitulasi kelas berdasarkan data setoran aktual.
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handlePrint}
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-950/50 flex items-center gap-2 text-sm"
-                >
-                  <Printer className="w-4 h-4" />
-                  Cetak Laporan (PDF)
-                </button>
-              </div>
+              <button
+                onClick={handlePrint}
+                disabled={loadingSetoran}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-950/50 flex items-center gap-2 text-sm"
+              >
+                <Printer className="w-4 h-4" />
+                Cetak Laporan (PDF)
+              </button>
             </div>
 
-            {/* TAB SELEKSI MODE LAPORAN */}
+            {errorMsg && (
+              <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800/60 text-rose-200 text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                {errorMsg}
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 w-full sm:w-auto">
                 <button
@@ -201,7 +237,6 @@ export default function LaporanDashboardPage() {
                   <UserCheck className="w-4 h-4" />
                   Rapor Santri (Individual)
                 </button>
-
                 <button
                   onClick={() => setReportType('rekap')}
                   className={`flex-1 sm:flex-none px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
@@ -215,16 +250,18 @@ export default function LaporanDashboardPage() {
                 </button>
               </div>
 
-              {/* FILTER PILIHAN SANTRI (JIKA MODE INDIVIDUAL) */}
               {reportType === 'individual' && (
                 <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <label className="text-xs text-slate-400 whitespace-nowrap font-medium">Pilih Santri:</label>
+                  <label className="text-xs text-slate-400 whitespace-nowrap font-medium">
+                    Pilih Santri:
+                  </label>
                   <select
                     value={selectedSantriId}
                     onChange={(e) => setSelectedSantriId(e.target.value)}
                     className="w-full sm:w-64 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                   >
-                    {santriList.map(s => (
+                    {santriList.length === 0 && <option value="">Belum ada santri</option>}
+                    {santriList.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.nama_lengkap} ({s.kode_unik})
                       </option>
@@ -234,10 +271,9 @@ export default function LaporanDashboardPage() {
               )}
             </div>
 
-            {/* FILTER RENTANG TANGGAL */}
             <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-slate-800/80 text-xs">
               <span className="text-slate-400 font-semibold flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-emerald-400" /> Filter Tanggal:
+                <Filter className="w-3.5 h-3.5 text-emerald-400" /> Filter Tanggal Setoran:
               </span>
               <div className="flex items-center gap-2">
                 <span className="text-slate-500">Dari:</span>
@@ -259,20 +295,25 @@ export default function LaporanDashboardPage() {
               </div>
               {(startDate || endDate) && (
                 <button
-                  onClick={() => { setStartDate(''); setEndDate(''); }}
+                  onClick={() => {
+                    setStartDate('');
+                    setEndDate('');
+                  }}
                   className="text-emerald-400 hover:underline font-medium ml-auto"
                 >
                   Reset Filter
                 </button>
               )}
+              {loadingSetoran && (
+                <span className="text-slate-500 flex items-center gap-1.5 ml-auto">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Memuat data...
+                </span>
+              )}
             </div>
-
           </div>
 
-          {/* AREA DOKUMEN CETAK (PRINT CONTAINER) */}
+          {/* DOKUMEN CETAK */}
           <div className="bg-white text-black p-8 sm:p-10 rounded-2xl shadow-2xl border border-slate-200 print:shadow-none print:border-none print:p-0">
-            
-            {/* KOP SURAT RESMI (PRINT READY) */}
             <div className="border-b-2 border-black pb-4 mb-6 flex items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black tracking-wider uppercase text-slate-900">
@@ -290,52 +331,71 @@ export default function LaporanDashboardPage() {
                   {reportType === 'individual' ? 'RAPOR SANTRI' : 'REKAPITULASI KELAS'}
                 </span>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Dicetak pada: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  Dicetak:{' '}
+                  {new Date().toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
                 </p>
               </div>
             </div>
 
-            {/* ISI LAPORAN MODE INDIVIDUAL */}
+            {/* INDIVIDUAL */}
             {reportType === 'individual' && selectedSantri && (
               <div className="space-y-6">
-                
-                {/* IDENTITAS SANTRI */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
                   <div>
                     <p className="text-slate-500 font-medium">Nama Santri</p>
-                    <p className="font-bold text-slate-900 text-sm mt-0.5">{selectedSantri.nama_lengkap}</p>
+                    <p className="font-bold text-slate-900 text-sm mt-0.5">
+                      {selectedSantri.nama_lengkap}
+                    </p>
                   </div>
                   <div>
                     <p className="text-slate-500 font-medium">NIS / Kode PIN</p>
-                    <p className="font-bold text-slate-900 font-mono mt-0.5">{selectedSantri.nis || '-'} / {selectedSantri.kode_unik}</p>
+                    <p className="font-bold text-slate-900 font-mono mt-0.5">
+                      {selectedSantri.nis || '-'} / {selectedSantri.kode_unik}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 font-medium">Juz Selesai / Level</p>
+                    <p className="font-bold text-emerald-700 mt-0.5">
+                      {individualProgress.juzSelesaiCount}/30 · {individualLevel.label}
+                    </p>
                   </div>
                   <div>
                     <p className="text-slate-500 font-medium">Target Capaian</p>
-                    <p className="font-bold text-emerald-700 mt-0.5">{selectedSantri.target_juz} Juz</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500 font-medium">Total Sesi Setoran</p>
-                    <p className="font-bold text-slate-900 mt-0.5">{totalSetoran} Sesi</p>
+                    <p className="font-bold text-slate-900 mt-0.5">{selectedSantri.target_juz} Juz</p>
                   </div>
                 </div>
 
-                {/* METRIK STATISTIK RINGKAS */}
-                <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                   <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
                     <p className="text-[11px] text-slate-500 font-semibold">Total Setoran</p>
-                    <p className="text-lg font-black text-slate-900">{totalSetoran}</p>
+                    <p className="text-lg font-black text-slate-900">
+                      {individualProgress.totalSetoran}
+                    </p>
                   </div>
                   <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                    <p className="text-[11px] text-emerald-700 font-semibold">Ziyadah (Baru)</p>
-                    <p className="text-lg font-black text-emerald-800">{totalZiyadah}</p>
+                    <p className="text-[11px] text-emerald-700 font-semibold">Ziyadah</p>
+                    <p className="text-lg font-black text-emerald-800">
+                      {individualProgress.totalZiyadah}
+                    </p>
                   </div>
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-[11px] text-amber-700 font-semibold">Murajaah (Ulang)</p>
-                    <p className="text-lg font-black text-amber-800">{totalMurajaah}</p>
+                    <p className="text-[11px] text-amber-700 font-semibold">Murajaah</p>
+                    <p className="text-lg font-black text-amber-800">
+                      {individualProgress.totalMurajaah}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-violet-50 border border-violet-200 rounded-lg">
+                    <p className="text-[11px] text-violet-700 font-semibold">Juz Selesai</p>
+                    <p className="text-lg font-black text-violet-800">
+                      {individualProgress.juzSelesaiCount}
+                    </p>
                   </div>
                 </div>
 
-                {/* TABEL DETAIL RIWAYAT SETORAN */}
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 flex items-center gap-1.5">
                     <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
@@ -354,10 +414,11 @@ export default function LaporanDashboardPage() {
                             <th className="py-2.5 px-3">No</th>
                             <th className="py-2.5 px-3">Tanggal</th>
                             <th className="py-2.5 px-3">Jenis</th>
+                            <th className="py-2.5 px-3">Juz</th>
                             <th className="py-2.5 px-3">Surah & Ayat</th>
-                            <th className="py-2.5 px-3 text-center">Kuantitas</th>
-                            <th className="py-2.5 px-3 text-center">Kualitas</th>
-                            <th className="py-2.5 px-3">Catatan Ustadz</th>
+                            <th className="py-2.5 px-3 text-center">Kelancaran</th>
+                            <th className="py-2.5 px-3 text-center">Tajwid</th>
+                            <th className="py-2.5 px-3">Catatan</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
@@ -365,23 +426,40 @@ export default function LaporanDashboardPage() {
                             <tr key={item.id} className="hover:bg-slate-50">
                               <td className="py-2 px-3 font-mono text-slate-500">{idx + 1}</td>
                               <td className="py-2 px-3 whitespace-nowrap font-medium">
-                                {new Date(item.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                {formatTanggal(item)}
                               </td>
                               <td className="py-2 px-3">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                  item.jenis_setoran === 'ziyadah'
-                                    ? 'bg-emerald-100 text-emerald-800'
-                                    : 'bg-amber-100 text-amber-800'
-                                }`}>
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                    item.jenis_setoran === 'ziyadah'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : 'bg-amber-100 text-amber-800'
+                                  }`}
+                                >
                                   {item.jenis_setoran}
                                 </span>
                               </td>
-                              <td className="py-2 px-3 font-bold text-slate-900">
-                                {item.surah} : {item.ayat_mulai} - {item.ayat_selesai}
+                              <td className="py-2 px-3 font-mono font-semibold">
+                                {item.juz ?? '-'}
+                                {item.juz_selesai ? (
+                                  <span className="ml-1 text-[9px] text-emerald-700 font-bold">
+                                    ✓
+                                  </span>
+                                ) : null}
                               </td>
-                              <td className="py-2 px-3 text-center font-medium">{item.nilai_kuantitas || '-'}</td>
-                              <td className="py-2 px-3 text-center font-bold text-emerald-700">{item.nilai_kualitas || '-'}</td>
-                              <td className="py-2 px-3 italic text-slate-600">{item.catatan || '-'}</td>
+                              <td className="py-2 px-3 font-bold text-slate-900">
+                                {item.nama_surah || '-'} : {item.ayat_mulai ?? '-'} -{' '}
+                                {item.ayat_selesai ?? '-'}
+                              </td>
+                              <td className="py-2 px-3 text-center font-medium">
+                                {item.nilai_kelancaran || '-'}
+                              </td>
+                              <td className="py-2 px-3 text-center font-bold text-emerald-700">
+                                {item.nilai_tajwid || '-'}
+                              </td>
+                              <td className="py-2 px-3 italic text-slate-600">
+                                {item.catatan || '-'}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -390,31 +468,43 @@ export default function LaporanDashboardPage() {
                   )}
                 </div>
 
-                {/* FOOTER TANDA TANGAN */}
                 <div className="pt-10 mt-8 grid grid-cols-2 gap-8 text-center text-xs break-inside-avoid">
                   <div>
                     <p className="text-slate-500">Mengetahui,</p>
                     <p className="font-bold text-slate-900 mt-0.5">Orang Tua / Wali Santri</p>
-                    <div className="h-16"></div>
-                    <p className="font-bold text-slate-900 underline">( ............................................ )</p>
+                    <div className="h-16" />
+                    <p className="font-bold text-slate-900 underline">
+                      ( ............................................ )
+                    </p>
                   </div>
                   <div>
                     <p className="text-slate-500">Penanggung Jawab Tahfizh,</p>
                     <p className="font-bold text-slate-900 mt-0.5">Ustadz Pengampu</p>
-                    <div className="h-16"></div>
-                    <p className="font-bold text-slate-900 underline">( ............................................ )</p>
+                    <div className="h-16" />
+                    <p className="font-bold text-slate-900 underline">
+                      ( ............................................ )
+                    </p>
                   </div>
                 </div>
-
               </div>
             )}
 
-            {/* ISI LAPORAN MODE REKAPITULASI KELAS */}
+            {reportType === 'individual' && !selectedSantri && (
+              <p className="text-center text-sm text-slate-500 py-12">
+                Belum ada data santri untuk dibuatkan rapor.
+              </p>
+            )}
+
+            {/* REKAP */}
             {reportType === 'rekap' && (
               <div className="space-y-6">
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex justify-between items-center">
-                  <span className="font-bold text-slate-700">Total Santri Terdaftar: {santriList.length} Santri</span>
-                  <span className="text-slate-500">Total Akumulasi Catatan: {setoranData.length} Records</span>
+                  <span className="font-bold text-slate-700">
+                    Total Santri Terdaftar: {santriList.length} Santri
+                  </span>
+                  <span className="text-slate-500">
+                    Total Catatan Periode: {setoranData.length} Records
+                  </span>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -425,52 +515,66 @@ export default function LaporanDashboardPage() {
                         <th className="py-2.5 px-3">Nama Santri</th>
                         <th className="py-2.5 px-3">NIS / Kode</th>
                         <th className="py-2.5 px-3 text-center">Target</th>
+                        <th className="py-2.5 px-3 text-center">Juz Selesai</th>
+                        <th className="py-2.5 px-3 text-center">Level</th>
                         <th className="py-2.5 px-3 text-center">Total Setoran</th>
                         <th className="py-2.5 px-3 text-center">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                      {santriList.map((santri, idx) => {
-                        const count = setoranData.filter(s => s.santri_id === santri.id).length;
-                        return (
-                          <tr key={santri.id} className="hover:bg-slate-50">
-                            <td className="py-2.5 px-3 font-mono text-slate-500">{idx + 1}</td>
-                            <td className="py-2.5 px-3 font-bold text-slate-900">{santri.nama_lengkap}</td>
-                            <td className="py-2.5 px-3 font-mono text-slate-600">{santri.nis || '-'} ({santri.kode_unik})</td>
-                            <td className="py-2.5 px-3 text-center font-semibold text-emerald-700">{santri.target_juz} Juz</td>
-                            <td className="py-2.5 px-3 text-center font-bold text-slate-900">{count} Sesi</td>
-                            <td className="py-2.5 px-3 text-center">
-                              {count > 0 ? (
-                                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold text-[10px]">Aktif</span>
-                              ) : (
-                                <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded font-bold text-[10px]">Belum Ada</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {rekapRows.map(({ santri, progress, level, count }, idx) => (
+                        <tr key={santri.id} className="hover:bg-slate-50">
+                          <td className="py-2.5 px-3 font-mono text-slate-500">{idx + 1}</td>
+                          <td className="py-2.5 px-3 font-bold text-slate-900">
+                            {santri.nama_lengkap}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-slate-600">
+                            {santri.nis || '-'} ({santri.kode_unik})
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-semibold text-emerald-700">
+                            {santri.target_juz} Juz
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-bold text-violet-800">
+                            {progress.juzSelesaiCount}/30
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-semibold text-slate-800">
+                            {level.label}
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-bold text-slate-900">
+                            {count} Sesi
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            {count > 0 ? (
+                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold text-[10px]">
+                                Aktif
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded font-bold text-[10px]">
+                                Belum Ada
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
 
-                {/* FOOTER TANDA TANGAN REKAP */}
                 <div className="pt-10 mt-8 flex justify-end text-center text-xs break-inside-avoid">
                   <div className="w-64">
                     <p className="text-slate-500">Koordinator Program Tahfizh,</p>
-                    <div className="h-16"></div>
-                    <p className="font-bold text-slate-900 underline">( ............................................ )</p>
+                    <div className="h-16" />
+                    <p className="font-bold text-slate-900 underline">
+                      ( ............................................ )
+                    </p>
                   </div>
                 </div>
-
               </div>
             )}
-
           </div>
-
         </div>
       </div>
 
-      {/* GLOBAL CSS UNTUK KERTAS A4 & PRINT */}
       <style jsx global>{`
         @media print {
           @page {
@@ -483,12 +587,13 @@ export default function LaporanDashboardPage() {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          header, nav, footer {
+          header,
+          nav,
+          footer {
             display: none !important;
           }
         }
       `}</style>
-
     </div>
   );
 }
