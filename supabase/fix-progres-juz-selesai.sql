@@ -8,8 +8,11 @@ ALTER TABLE public.setoran_hafalan
 COMMENT ON COLUMN public.setoran_hafalan.juz IS 'Nomor juz (1-30) yang disetor';
 COMMENT ON COLUMN public.setoran_hafalan.juz_selesai IS 'True jika ziyadah ini menandai juz tersebut selesai';
 
--- Perbarui RPC portal agar mengembalikan juz + juz_selesai
-CREATE OR REPLACE FUNCTION public.get_setoran_by_kode(p_kode text)
+-- WAJIB: drop dulu karena return type fungsi berubah
+DROP FUNCTION IF EXISTS public.get_setoran_by_kode(text);
+
+-- Buat ulang RPC portal agar mengembalikan juz + juz_selesai
+CREATE FUNCTION public.get_setoran_by_kode(p_kode text)
 RETURNS TABLE (
   id uuid,
   jenis_setoran text,
