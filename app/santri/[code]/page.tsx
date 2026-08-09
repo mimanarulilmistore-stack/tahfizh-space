@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import SantriBadgesGrid from "@/components/SantriBadgesGrid";
+import PortalExitButton from "@/components/PortalExitButton";
 import Link from "next/link";
 import { computeJuzProgress, getSantriLevel } from "@/src/utils/badgeCalculator";
 
@@ -146,6 +147,8 @@ export default async function SantriDetailPage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-slate-50 p-4 sm:p-8 dark:bg-slate-950 transition-colors">
       <div className="mx-auto max-w-4xl space-y-6">
+        <PortalExitButton />
+
         <header className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm dark:border-emerald-900/30 dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 mb-2">
@@ -238,6 +241,10 @@ export default async function SantriDetailPage({ params }: PageProps) {
         <p className="text-center text-xs text-slate-400 pb-4">
           Halaman ini hanya menampilkan data santri sesuai PIN/QR yang Anda buka.
         </p>
+
+        <div className="pb-8 flex justify-center">
+          <PortalExitButton />
+        </div>
       </div>
     </main>
   );

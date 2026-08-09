@@ -88,6 +88,10 @@ export default function PortalPinPage() {
         </div>
 
         <p className="text-center text-xs text-slate-500">
+          <Link href="/" className="text-slate-400 hover:text-white hover:underline">
+            Kembali ke halaman utama
+          </Link>
+          {' · '}
           Ustadz?{' '}
           <Link href="/login" className="text-emerald-400 hover:underline">
             Masuk ke dashboard

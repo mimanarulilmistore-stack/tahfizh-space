@@ -22,7 +22,8 @@ export default function HeaderAdmin() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/login');
+    // Kembali ke halaman depan (2 opsi: ustadz / wali)
+    window.location.assign('/');
   };
 
   const isActive = (path: string) => pathname === path;
