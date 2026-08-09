@@ -69,6 +69,7 @@ export default function LaporanDashboardPage() {
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [jenisFilter, setJenisFilter] = useState<'all' | 'ziyadah' | 'murajaah'>('all');
 
   useEffect(() => {
     const initPage = async () => {
@@ -126,7 +127,6 @@ export default function LaporanDashboardPage() {
           query = query.eq('santri_id', selectedSantriId);
         }
 
-        // Filter tanggal memakai tanggal_setoran (fallback: created_at di sisi tampilan)
         if (startDate) {
           query = query.gte('tanggal_setoran', startDate);
         }
@@ -154,20 +154,107 @@ export default function LaporanDashboardPage() {
 
   const selectedSantri = santriList.find((s) => s.id === selectedSantriId);
 
+  // Progress & level selalu dari seluruh data periode (ziyadah+murajaah), agar juz akurat
   const individualProgress = useMemo(
     () => computeJuzProgress(setoranData),
     [setoranData]
   );
   const individualLevel = getSantriLevel(individualProgress.juzSelesaiCount);
 
+  const ziyadahRows = useMemo(
+    () => setoranData.filter((s) => s.jenis_setoran === 'ziyadah'),
+    [setoranData]
+  );
+  const murajaahRows = useMemo(
+    () => setoranData.filter((s) => s.jenis_setoran === 'murajaah'),
+    [setoranData]
+  );
+
+  const showZiyadahSection = jenisFilter === 'all' || jenisFilter === 'ziyadah';
+  const showMurajaahSection = jenisFilter === 'all' || jenisFilter === 'murajaah';
+
   const rekapRows = useMemo(() => {
     return santriList.map((santri) => {
       const rows = setoranData.filter((s) => s.santri_id === santri.id);
       const progress = computeJuzProgress(rows);
       const level = getSantriLevel(progress.juzSelesaiCount);
-      return { santri, progress, level, count: progress.totalSetoran };
+      return {
+        santri,
+        progress,
+        level,
+        count: progress.totalSetoran,
+        ziyadah: progress.totalZiyadah,
+        murajaah: progress.totalMurajaah,
+      };
     });
   }, [santriList, setoranData]);
+
+  const rekapTotals = useMemo(() => {
+    return rekapRows.reduce(
+      (acc, row) => {
+        acc.ziyadah += row.ziyadah;
+        acc.murajaah += row.murajaah;
+        acc.total += row.count;
+        acc.juz += row.progress.juzSelesaiCount;
+        return acc;
+      },
+      { ziyadah: 0, murajaah: 0, total: 0, juz: 0 }
+    );
+  }, [rekapRows]);
+
+  const renderSetoranTable = (rows: SetoranRecord[], emptyText: string) => {
+    if (rows.length === 0) {
+      return (
+        <div className="text-center py-6 border border-dashed border-slate-300 rounded-xl text-slate-500 text-xs">
+          {emptyText}
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr className="bg-slate-100 border-y border-slate-300 text-slate-700 font-bold">
+              <th className="py-2.5 px-3">No</th>
+              <th className="py-2.5 px-3">Tanggal</th>
+              <th className="py-2.5 px-3">Juz</th>
+              <th className="py-2.5 px-3">Surah & Ayat</th>
+              <th className="py-2.5 px-3 text-center">Kelancaran</th>
+              <th className="py-2.5 px-3 text-center">Tajwid</th>
+              <th className="py-2.5 px-3">Catatan</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {rows.map((item, idx) => (
+              <tr key={item.id} className="hover:bg-slate-50">
+                <td className="py-2 px-3 font-mono text-slate-500">{idx + 1}</td>
+                <td className="py-2 px-3 whitespace-nowrap font-medium">
+                  {formatTanggal(item)}
+                </td>
+                <td className="py-2 px-3 font-mono font-semibold">
+                  {item.juz ?? '-'}
+                  {item.juz_selesai ? (
+                    <span className="ml-1 text-[9px] text-emerald-700 font-bold">✓ selesai</span>
+                  ) : null}
+                </td>
+                <td className="py-2 px-3 font-bold text-slate-900">
+                  {item.nama_surah || '-'} : {item.ayat_mulai ?? '-'} - {item.ayat_selesai ?? '-'}
+                </td>
+                <td className="py-2 px-3 text-center font-medium">
+                  {item.nilai_kelancaran || '-'}
+                </td>
+                <td className="py-2 px-3 text-center font-bold text-emerald-700">
+                  {item.nilai_tajwid || '-'}
+                </td>
+                <td className="py-2 px-3 italic text-slate-600">{item.catatan || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -273,8 +360,24 @@ export default function LaporanDashboardPage() {
 
             <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-slate-800/80 text-xs">
               <span className="text-slate-400 font-semibold flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-emerald-400" /> Filter Tanggal Setoran:
+                <Filter className="w-3.5 h-3.5 text-emerald-400" /> Filter:
               </span>
+
+              <div className="flex items-center gap-2">
+                <span className="text-slate-500">Jenis:</span>
+                <select
+                  value={jenisFilter}
+                  onChange={(e) =>
+                    setJenisFilter(e.target.value as 'all' | 'ziyadah' | 'murajaah')
+                  }
+                  className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="all">Semua (Ziyadah + Murajaah)</option>
+                  <option value="ziyadah">Hanya Ziyadah</option>
+                  <option value="murajaah">Hanya Murajaah</option>
+                </select>
+              </div>
+
               <div className="flex items-center gap-2">
                 <span className="text-slate-500">Dari:</span>
                 <input
@@ -293,13 +396,14 @@ export default function LaporanDashboardPage() {
                   className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
-              {(startDate || endDate) && (
+              {(startDate || endDate || jenisFilter !== 'all') && (
                 <button
                   onClick={() => {
                     setStartDate('');
                     setEndDate('');
+                    setJenisFilter('all');
                   }}
-                  className="text-emerald-400 hover:underline font-medium ml-auto"
+                  className="text-emerald-400 hover:underline font-medium"
                 >
                   Reset Filter
                 </button>
@@ -396,74 +500,30 @@ export default function LaporanDashboardPage() {
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
-                    Rincian Catatan Setoran Hafalan
-                  </h3>
-
-                  {setoranData.length === 0 ? (
-                    <div className="text-center py-8 border border-dashed border-slate-300 rounded-xl text-slate-500 text-xs">
-                      Belum ada catatan setoran hafalan pada periode ini.
+                <div className="space-y-5">
+                  {showZiyadahSection && (
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 mb-2 flex items-center gap-1.5">
+                        <BookOpen className="w-3.5 h-3.5" />
+                        Rincian Ziyadah ({ziyadahRows.length})
+                      </h3>
+                      {renderSetoranTable(
+                        ziyadahRows,
+                        'Belum ada catatan ziyadah pada periode ini.'
+                      )}
                     </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-slate-100 border-y border-slate-300 text-slate-700 font-bold">
-                            <th className="py-2.5 px-3">No</th>
-                            <th className="py-2.5 px-3">Tanggal</th>
-                            <th className="py-2.5 px-3">Jenis</th>
-                            <th className="py-2.5 px-3">Juz</th>
-                            <th className="py-2.5 px-3">Surah & Ayat</th>
-                            <th className="py-2.5 px-3 text-center">Kelancaran</th>
-                            <th className="py-2.5 px-3 text-center">Tajwid</th>
-                            <th className="py-2.5 px-3">Catatan</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                          {setoranData.map((item, idx) => (
-                            <tr key={item.id} className="hover:bg-slate-50">
-                              <td className="py-2 px-3 font-mono text-slate-500">{idx + 1}</td>
-                              <td className="py-2 px-3 whitespace-nowrap font-medium">
-                                {formatTanggal(item)}
-                              </td>
-                              <td className="py-2 px-3">
-                                <span
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                    item.jenis_setoran === 'ziyadah'
-                                      ? 'bg-emerald-100 text-emerald-800'
-                                      : 'bg-amber-100 text-amber-800'
-                                  }`}
-                                >
-                                  {item.jenis_setoran}
-                                </span>
-                              </td>
-                              <td className="py-2 px-3 font-mono font-semibold">
-                                {item.juz ?? '-'}
-                                {item.juz_selesai ? (
-                                  <span className="ml-1 text-[9px] text-emerald-700 font-bold">
-                                    ✓
-                                  </span>
-                                ) : null}
-                              </td>
-                              <td className="py-2 px-3 font-bold text-slate-900">
-                                {item.nama_surah || '-'} : {item.ayat_mulai ?? '-'} -{' '}
-                                {item.ayat_selesai ?? '-'}
-                              </td>
-                              <td className="py-2 px-3 text-center font-medium">
-                                {item.nilai_kelancaran || '-'}
-                              </td>
-                              <td className="py-2 px-3 text-center font-bold text-emerald-700">
-                                {item.nilai_tajwid || '-'}
-                              </td>
-                              <td className="py-2 px-3 italic text-slate-600">
-                                {item.catatan || '-'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  )}
+
+                  {showMurajaahSection && (
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-amber-800 mb-2 flex items-center gap-1.5">
+                        <BookOpen className="w-3.5 h-3.5" />
+                        Rincian Murajaah ({murajaahRows.length})
+                      </h3>
+                      {renderSetoranTable(
+                        murajaahRows,
+                        'Belum ada catatan murajaah pada periode ini.'
+                      )}
                     </div>
                   )}
                 </div>
@@ -498,13 +558,24 @@ export default function LaporanDashboardPage() {
             {/* REKAP */}
             {reportType === 'rekap' && (
               <div className="space-y-6">
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex justify-between items-center">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex flex-wrap gap-3 justify-between items-center">
                   <span className="font-bold text-slate-700">
-                    Total Santri Terdaftar: {santriList.length} Santri
+                    Total Santri: {santriList.length}
                   </span>
-                  <span className="text-slate-500">
-                    Total Catatan Periode: {setoranData.length} Records
+                  <span className="text-emerald-700 font-semibold">
+                    Ziyadah: {rekapTotals.ziyadah}
                   </span>
+                  <span className="text-amber-700 font-semibold">
+                    Murajaah: {rekapTotals.murajaah}
+                  </span>
+                  <span className="text-slate-600">
+                    Total Sesi: {rekapTotals.total}
+                  </span>
+                  {jenisFilter !== 'all' && (
+                    <span className="text-slate-500 italic">
+                      Tampilan filter: {jenisFilter} (angka rekap tetap mencakup keduanya)
+                    </span>
+                  )}
                 </div>
 
                 <div className="overflow-x-auto">
@@ -517,12 +588,14 @@ export default function LaporanDashboardPage() {
                         <th className="py-2.5 px-3 text-center">Target</th>
                         <th className="py-2.5 px-3 text-center">Juz Selesai</th>
                         <th className="py-2.5 px-3 text-center">Level</th>
-                        <th className="py-2.5 px-3 text-center">Total Setoran</th>
+                        <th className="py-2.5 px-3 text-center">Ziyadah</th>
+                        <th className="py-2.5 px-3 text-center">Murajaah</th>
+                        <th className="py-2.5 px-3 text-center">Total</th>
                         <th className="py-2.5 px-3 text-center">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                      {rekapRows.map(({ santri, progress, level, count }, idx) => (
+                      {rekapRows.map(({ santri, progress, level, count, ziyadah, murajaah }, idx) => (
                         <tr key={santri.id} className="hover:bg-slate-50">
                           <td className="py-2.5 px-3 font-mono text-slate-500">{idx + 1}</td>
                           <td className="py-2.5 px-3 font-bold text-slate-900">
@@ -540,8 +613,14 @@ export default function LaporanDashboardPage() {
                           <td className="py-2.5 px-3 text-center font-semibold text-slate-800">
                             {level.label}
                           </td>
+                          <td className="py-2.5 px-3 text-center font-bold text-emerald-800">
+                            {ziyadah}
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-bold text-amber-800">
+                            {murajaah}
+                          </td>
                           <td className="py-2.5 px-3 text-center font-bold text-slate-900">
-                            {count} Sesi
+                            {count}
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             {count > 0 ? (
