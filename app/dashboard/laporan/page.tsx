@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
+import JuzMap from '@/components/JuzMap';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import { computeJuzProgress, getSantriLevel } from '@/src/utils/badgeCalculator';
 import {
@@ -499,6 +500,13 @@ export default function LaporanDashboardPage() {
                     </p>
                   </div>
                 </div>
+
+                <JuzMap
+                  completedJuz={individualProgress.juzSelesaiList}
+                  startedJuz={individualProgress.juzDimulaiList}
+                  targetJuz={selectedSantri.target_juz || 30}
+                  variant="light"
+                />
 
                 <div className="space-y-5">
                   {showZiyadahSection && (

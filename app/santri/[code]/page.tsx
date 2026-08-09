@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import SantriBadgesGrid from "@/components/SantriBadgesGrid";
+import JuzMap from "@/components/JuzMap";
 import PortalExitButton from "@/components/PortalExitButton";
 import Link from "next/link";
 import { computeJuzProgress, getSantriLevel } from "@/src/utils/badgeCalculator";
@@ -180,6 +181,13 @@ export default async function SantriDetailPage({ params }: PageProps) {
             </p>
           </div>
         </header>
+
+        <JuzMap
+          completedJuz={progress.juzSelesaiList}
+          startedJuz={progress.juzDimulaiList}
+          targetJuz={santri.target_juz || 30}
+          variant="light"
+        />
 
         <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">

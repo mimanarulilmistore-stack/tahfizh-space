@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getBrowserSupabase } from '@/src/lib/supabase';
+import JuzMap from '@/components/JuzMap';
+import { computeJuzProgress } from '@/src/utils/badgeCalculator';
 import { 
   Search, 
   BookOpen, 
@@ -30,12 +32,14 @@ interface SantriProfile {
 
 interface SetoranHafalan {
   id: string;
-  jenis_setoran: 'ziyadah' | 'murajaah';
-  nama_surah: string;
-  ayat_mulai: number;
-  ayat_selesai: number;
-  nilai_kelancaran: string;
-  nilai_tajwid: string;
+  jenis_setoran: 'ziyadah' | 'murajaah' | string;
+  nama_surah: string | null;
+  juz: number | null;
+  juz_selesai: boolean | null;
+  ayat_mulai: number | null;
+  ayat_selesai: number | null;
+  nilai_kelancaran: string | null;
+  nilai_tajwid: string | null;
   catatan: string | null;
   created_at: string;
 }
@@ -105,7 +109,9 @@ export default function PortalSantriPage() {
       // 2. Ambil Riwayat Setoran Hafalan Santri
       const { data: setoranData, error: setoranError } = await supabase
         .from('setoran_hafalan')
-        .select('id, jenis_setoran, nama_surah, ayat_mulai, ayat_selesai, nilai_kelancaran, nilai_tajwid, catatan, created_at')
+        .select(
+          'id, jenis_setoran, nama_surah, juz, juz_selesai, ayat_mulai, ayat_selesai, nilai_kelancaran, nilai_tajwid, catatan, created_at'
+        )
         .eq('santri_id', santriData.id)
         .order('created_at', { ascending: false });
 
@@ -130,6 +136,20 @@ export default function PortalSantriPage() {
   const totalSetoran = setoranList.length;
   const totalZiyadah = setoranList.filter(s => s.jenis_setoran === 'ziyadah').length;
   const totalMurajaah = setoranList.filter(s => s.jenis_setoran === 'murajaah').length;
+  const juzProgress = useMemo(
+    () =>
+      computeJuzProgress(
+        setoranList.map((item) => ({
+          id: item.id,
+          jenis_setoran: item.jenis_setoran,
+          juz: item.juz,
+          juz_selesai: item.juz_selesai,
+          nilai_kelancaran: item.nilai_kelancaran,
+          nilai_tajwid: item.nilai_tajwid,
+        }))
+      ),
+    [setoranList]
+  );
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8 font-sans">
@@ -288,6 +308,13 @@ export default function PortalSantriPage() {
                 <p className="text-xs text-slate-500 mt-1">Penguatan hafalan lama</p>
               </div>
             </div>
+
+            <JuzMap
+              completedJuz={juzProgress.juzSelesaiList}
+              startedJuz={juzProgress.juzDimulaiList}
+              targetJuz={selectedSantri.target_juz || 30}
+              variant="dark"
+            />
 
             {/* TIMELINE RIWAYAT SETORAN */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">

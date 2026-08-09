@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
+import JuzMap from '@/components/JuzMap';
 import { getBrowserSupabase } from '@/src/lib/supabase';
+import { computeJuzProgress } from '@/src/utils/badgeCalculator';
 import {
   ArrowLeft,
   RefreshCw,
@@ -132,6 +134,21 @@ export default function KelolaSantriPage() {
     if (santriId) loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [santriId]);
+
+  const juzProgress = useMemo(
+    () =>
+      computeJuzProgress(
+        setoranList.map((item) => ({
+          id: item.id,
+          jenis_setoran: item.jenis_setoran,
+          juz: item.juz,
+          juz_selesai: item.juz_selesai,
+          nilai_kelancaran: item.nilai_kelancaran,
+          nilai_tajwid: item.nilai_tajwid,
+        }))
+      ),
+    [setoranList]
+  );
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -371,6 +388,13 @@ export default function KelolaSantriPage() {
               </button>
             </div>
           </form>
+
+          <JuzMap
+            completedJuz={juzProgress.juzSelesaiList}
+            startedJuz={juzProgress.juzDimulaiList}
+            targetJuz={targetJuz}
+            variant="dark"
+          />
 
           {/* RIWAYAT SETORAN */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">

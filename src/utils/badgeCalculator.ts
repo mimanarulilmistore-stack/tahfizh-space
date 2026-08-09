@@ -48,6 +48,8 @@ export const SANTRI_LEVELS: SantriLevel[] = [
 export interface JuzProgress {
   /** Nomor juz yang sudah ditandai selesai (unik, 1–30) */
   juzSelesaiList: number[];
+  /** Juz yang sudah mulai ziyadah tapi belum ditandai selesai */
+  juzDimulaiList: number[];
   /** Jumlah juz selesai */
   juzSelesaiCount: number;
   /** Juz tertinggi yang pernah disetor sebagai ziyadah */
@@ -81,6 +83,7 @@ function isMumtazNilai(...nilaiList: Array<string | null | undefined>): boolean 
 /** Hitung progres juz dari riwayat setoran (hanya ziyadah yang menambah juz). */
 export function computeJuzProgress(setoranList: SetoranItem[]): JuzProgress {
   const completed = new Set<number>();
+  const started = new Set<number>();
   let juzTertinggi = 0;
   let totalZiyadah = 0;
   let totalMurajaah = 0;
@@ -102,14 +105,20 @@ export function computeJuzProgress(setoranList: SetoranItem[]): JuzProgress {
     const j = Number(s.juz);
     if (!Number.isFinite(j) || j < 1 || j > 30) continue;
 
-    juzTertinggi = Math.max(juzTertinggi, j);
-    if (s.juz_selesai) completed.add(Math.floor(j));
+    const juzNum = Math.floor(j);
+    juzTertinggi = Math.max(juzTertinggi, juzNum);
+    started.add(juzNum);
+    if (s.juz_selesai) completed.add(juzNum);
   }
 
   const juzSelesaiList = [...completed].sort((a, b) => a - b);
+  const juzDimulaiList = [...started]
+    .filter((j) => !completed.has(j))
+    .sort((a, b) => a - b);
 
   return {
     juzSelesaiList,
+    juzDimulaiList,
     juzSelesaiCount: juzSelesaiList.length,
     juzTertinggi,
     totalZiyadah,
