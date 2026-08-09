@@ -188,6 +188,9 @@ export default async function SantriDetailPage({ params }: PageProps) {
           targetJuz={santri.target_juz || 30}
           variant="light"
         />
+        <p className="text-center text-xs text-slate-400 -mt-3">
+          Peta ini hanya tampilan. Penandaan juz selesai dilakukan oleh ustadz di dashboard.
+        </p>
 
         <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">

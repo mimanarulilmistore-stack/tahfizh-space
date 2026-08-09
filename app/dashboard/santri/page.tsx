@@ -54,6 +54,8 @@ export default function PortalSantriPage() {
   const [selectedSantri, setSelectedSantri] = useState<SantriProfile | null>(null);
   const [setoranList, setSetoranList] = useState<SetoranHafalan[]>([]);
   const [isUstadzSession, setIsUstadzSession] = useState(false);
+  const [busyJuz, setBusyJuz] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Cek apakah ada session Ustadz yang sedang aktif
   useEffect(() => {
@@ -151,10 +153,106 @@ export default function PortalSantriPage() {
     [setoranList]
   );
 
+  const showToast = (type: 'success' | 'error', text: string) => {
+    setToast({ type, text });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const reloadSetoran = async (santriId: string) => {
+    const { data, error } = await supabase
+      .from('setoran_hafalan')
+      .select(
+        'id, jenis_setoran, nama_surah, juz, juz_selesai, ayat_mulai, ayat_selesai, nilai_kelancaran, nilai_tajwid, catatan, created_at'
+      )
+      .eq('santri_id', santriId)
+      .order('created_at', { ascending: false });
+    if (!error) setSetoranList(data || []);
+  };
+
+  const handleToggleJuzSelesai = async (
+    juz: number,
+    currentlyCompleted: boolean,
+    hasExistingZiyadah: boolean
+  ) => {
+    if (!selectedSantri || !isUstadzSession || busyJuz != null) return;
+
+    setBusyJuz(juz);
+    try {
+      if (currentlyCompleted) {
+        const { error } = await supabase
+          .from('setoran_hafalan')
+          .update({ juz_selesai: false })
+          .eq('santri_id', selectedSantri.id)
+          .eq('juz', juz)
+          .eq('jenis_setoran', 'ziyadah');
+        if (error) throw error;
+        showToast('success', `Tanda Juz ${juz} selesai dibatalkan.`);
+        await reloadSetoran(selectedSantri.id);
+        return;
+      }
+
+      const existingZiyadah = setoranList.filter(
+        (s) => s.jenis_setoran === 'ziyadah' && Number(s.juz) === juz
+      );
+
+      if (existingZiyadah.length > 0 || hasExistingZiyadah) {
+        const latest = existingZiyadah[0];
+        if (!latest) throw new Error(`Tidak menemukan setoran ziyadah untuk Juz ${juz}.`);
+        const { error } = await supabase
+          .from('setoran_hafalan')
+          .update({ juz_selesai: true })
+          .eq('id', latest.id);
+        if (error) throw error;
+      } else {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.user?.id) {
+          throw new Error('Sesi ustadz tidak ditemukan. Silakan login ulang.');
+        }
+        const today = new Date().toISOString().split('T')[0];
+        const { error } = await supabase.from('setoran_hafalan').insert([
+          {
+            santri_id: selectedSantri.id,
+            ustadz_id: session.user.id,
+            jenis_setoran: 'ziyadah',
+            nama_surah: `Penyelesaian Juz ${juz}`,
+            juz,
+            juz_selesai: true,
+            ayat_mulai: 1,
+            ayat_selesai: 1,
+            tanggal_setoran: today,
+            nilai_kelancaran: 'Lancar',
+            nilai_tajwid: 'Sangat Baik',
+            catatan: 'Ditandai selesai belakangan oleh ustadz',
+          },
+        ]);
+        if (error) throw error;
+      }
+
+      showToast('success', `Juz ${juz} berhasil ditandai selesai.`);
+      await reloadSetoran(selectedSantri.id);
+    } catch (err: any) {
+      showToast('error', err.message || 'Gagal menandai juz selesai.');
+    } finally {
+      setBusyJuz(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-6xl mx-auto space-y-8">
-        
+        {toast && (
+          <div
+            className={`fixed top-4 right-4 z-[60] max-w-sm p-4 rounded-xl border flex items-start gap-3 shadow-2xl ${
+              toast.type === 'success'
+                ? 'bg-emerald-950/95 border-emerald-800 text-emerald-200'
+                : 'bg-rose-950/95 border-rose-800 text-rose-200'
+            }`}
+          >
+            <p className="text-sm">{toast.text}</p>
+          </div>
+        )}
         {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-6">
           <div>
@@ -314,6 +412,10 @@ export default function PortalSantriPage() {
               startedJuz={juzProgress.juzDimulaiList}
               targetJuz={selectedSantri.target_juz || 30}
               variant="dark"
+              interactive={isUstadzSession}
+              busyJuz={busyJuz}
+              disabled={busyJuz != null || !isUstadzSession}
+              onToggleJuz={isUstadzSession ? handleToggleJuzSelesai : undefined}
             />
 
             {/* TIMELINE RIWAYAT SETORAN */}

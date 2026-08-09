@@ -294,16 +294,16 @@ export default function KelolaSantriPage() {
     }
   };
 
-  const handleToggleJuzSelesai = async (juz: number, currentlyCompleted: boolean) => {
+  const handleToggleJuzSelesai = async (
+    juz: number,
+    currentlyCompleted: boolean,
+    hasExistingZiyadah: boolean
+  ) => {
     if (busyJuz != null) return;
 
-    if (currentlyCompleted) {
-      if (!confirm(`Batalkan tanda Juz ${juz} selesai? Level & lencana akan menyesuaikan.`)) {
-        return;
-      }
-
-      setBusyJuz(juz);
-      try {
+    setBusyJuz(juz);
+    try {
+      if (currentlyCompleted) {
         const { error } = await supabase
           .from('setoran_hafalan')
           .update({ juz_selesai: false })
@@ -313,39 +313,23 @@ export default function KelolaSantriPage() {
         if (error) throw error;
         showToast('success', `Tanda Juz ${juz} selesai dibatalkan.`);
         await loadData();
-      } catch (err: any) {
-        showToast('error', err.message || 'Gagal membatalkan tanda juz.');
-      } finally {
-        setBusyJuz(null);
-      }
-      return;
-    }
-
-    const existingZiyadah = setoranList.filter(
-      (s) => s.jenis_setoran === 'ziyadah' && Number(s.juz) === juz
-    );
-
-    if (existingZiyadah.length === 0) {
-      if (
-        !confirm(
-          `Belum ada setoran ziyadah untuk Juz ${juz}.\n\nBuat catatan penyelesaian Juz ${juz} sekarang?`
-        )
-      ) {
         return;
       }
-    } else if (!confirm(`Tandai Juz ${juz} sebagai selesai?`)) {
-      return;
-    }
 
-    setBusyJuz(juz);
-    try {
-      if (existingZiyadah.length > 0) {
-        // Tandai setoran ziyadah terbaru untuk juz ini
+      const existingZiyadah = setoranList.filter(
+        (s) => s.jenis_setoran === 'ziyadah' && Number(s.juz) === juz
+      );
+
+      if (existingZiyadah.length > 0 || hasExistingZiyadah) {
         const latest = [...existingZiyadah].sort((a, b) => {
           const da = a.tanggal_setoran || a.created_at || '';
           const db = b.tanggal_setoran || b.created_at || '';
           return db.localeCompare(da);
         })[0];
+
+        if (!latest) {
+          throw new Error(`Tidak menemukan setoran ziyadah untuk Juz ${juz}.`);
+        }
 
         const { error } = await supabase
           .from('setoran_hafalan')

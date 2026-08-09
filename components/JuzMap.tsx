@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 
 export type JuzMapVariant = 'light' | 'dark';
 
@@ -20,8 +20,15 @@ type JuzMapProps = {
   /** Juz yang sedang disimpan */
   busyJuz?: number | null;
   disabled?: boolean;
-  /** currentlyCompleted = true jika juz sudah selesai sebelum diklik */
-  onToggleJuz?: (juz: number, currentlyCompleted: boolean) => void;
+  /**
+   * currentlyCompleted = true jika juz sudah selesai sebelum diklik.
+   * hasExistingZiyadah = ada setoran ziyadah untuk juz itu.
+   */
+  onToggleJuz?: (
+    juz: number,
+    currentlyCompleted: boolean,
+    hasExistingZiyadah: boolean
+  ) => void | Promise<void>;
 };
 
 const ALL_JUZ = Array.from({ length: 30 }, (_, i) => i + 1);
@@ -31,39 +38,48 @@ function cellClasses(
   isTarget: boolean,
   variant: JuzMapVariant,
   interactive: boolean,
-  isBusy: boolean
+  isBusy: boolean,
+  isPending: boolean
 ): string {
   const base =
-    'relative aspect-square rounded-lg text-[11px] sm:text-xs font-bold flex items-center justify-center transition-colors select-none';
+    'relative aspect-square min-h-[2rem] rounded-lg text-[11px] sm:text-xs font-bold flex items-center justify-center transition-transform select-none touch-manipulation';
   const clickable = interactive
-    ? `cursor-pointer hover:scale-[1.04] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
-        isBusy ? 'opacity-50 pointer-events-none' : ''
+    ? `cursor-pointer hover:brightness-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
+        isBusy || isPending ? 'opacity-60' : ''
       }`
     : '';
 
   if (variant === 'dark') {
     if (status === 'selesai') {
-      return `${base} ${clickable} bg-emerald-500 text-emerald-950 shadow-sm shadow-emerald-900/40`;
+      return `${base} ${clickable} bg-emerald-500 text-emerald-950 shadow-sm shadow-emerald-900/40 ${
+        isPending ? 'ring-2 ring-white' : ''
+      }`;
     }
     if (status === 'proses') {
-      return `${base} ${clickable} bg-amber-500/25 text-amber-200 border border-amber-500/50`;
+      return `${base} ${clickable} bg-amber-500/25 text-amber-200 border border-amber-500/50 ${
+        isPending ? 'ring-2 ring-amber-300' : ''
+      }`;
     }
     return `${base} ${clickable} bg-slate-950 text-slate-500 border border-slate-800 ${
       isTarget ? 'ring-2 ring-sky-500/70 ring-offset-1 ring-offset-slate-900' : ''
-    }`;
+    } ${isPending ? 'ring-2 ring-emerald-400' : ''}`;
   }
 
   if (status === 'selesai') {
-    return `${base} ${clickable} bg-emerald-600 text-white shadow-sm dark:bg-emerald-500 dark:text-emerald-950`;
+    return `${base} ${clickable} bg-emerald-600 text-white shadow-sm dark:bg-emerald-500 dark:text-emerald-950 ${
+      isPending ? 'ring-2 ring-emerald-900' : ''
+    }`;
   }
   if (status === 'proses') {
-    return `${base} ${clickable} bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-500/25 dark:text-amber-200 dark:border-amber-500/50`;
+    return `${base} ${clickable} bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-500/25 dark:text-amber-200 dark:border-amber-500/50 ${
+      isPending ? 'ring-2 ring-amber-500' : ''
+    }`;
   }
   return `${base} ${clickable} bg-slate-100 text-slate-400 border border-slate-200 dark:bg-slate-950 dark:text-slate-500 dark:border-slate-800 ${
     isTarget
       ? 'ring-2 ring-sky-400 ring-offset-1 ring-offset-white dark:ring-sky-500/70 dark:ring-offset-slate-900'
       : ''
-  }`;
+  } ${isPending ? 'ring-2 ring-emerald-500' : ''}`;
 }
 
 export default function JuzMap({
@@ -78,6 +94,8 @@ export default function JuzMap({
   disabled = false,
   onToggleJuz,
 }: JuzMapProps) {
+  const [pendingJuz, setPendingJuz] = useState<number | null>(null);
+
   const completed = new Set(
     completedJuz.filter((j) => Number.isFinite(j) && j >= 1 && j <= 30).map((j) => Math.floor(j))
   );
@@ -87,7 +105,9 @@ export default function JuzMap({
   const target = Math.min(30, Math.max(1, Number(targetJuz) || 30));
   const selesaiCount = completed.size;
   const prosesCount = [...started].filter((j) => !completed.has(j)).length;
-  const canInteract = interactive && !disabled && Boolean(onToggleJuz);
+  // disabled hanya menonaktifkan aksi, tetap render sebagai tombol agar klik tidak "mati"
+  const showAsInteractive = Boolean(interactive && onToggleJuz);
+  const actionsLocked = disabled || busyJuz != null;
 
   const shell =
     variant === 'dark'
@@ -105,6 +125,29 @@ export default function JuzMap({
       ? 'text-[10px] text-slate-400'
       : 'text-[10px] text-slate-500 dark:text-slate-400';
 
+  const pendingCompleted = pendingJuz != null ? completed.has(pendingJuz) : false;
+  const pendingHasZiyadah =
+    pendingJuz != null ? completed.has(pendingJuz) || started.has(pendingJuz) : false;
+
+  const handleCellClick = (juz: number) => {
+    if (!showAsInteractive || actionsLocked) return;
+    setPendingJuz(juz);
+  };
+
+  const handleConfirm = async () => {
+    if (pendingJuz == null || !onToggleJuz || actionsLocked) return;
+    const juz = pendingJuz;
+    const currentlyCompleted = completed.has(juz);
+    const hasExistingZiyadah = currentlyCompleted || started.has(juz);
+    setPendingJuz(null);
+    await onToggleJuz(juz, currentlyCompleted, hasExistingZiyadah);
+  };
+
+  const confirmPanelCls =
+    variant === 'dark'
+      ? 'mt-4 rounded-xl border border-emerald-800/70 bg-emerald-950/40 p-3 sm:p-4'
+      : 'mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4';
+
   return (
     <div className={`${shell} ${className}`}>
       {!compact && (
@@ -116,9 +159,9 @@ export default function JuzMap({
               {prosesCount > 0 ? ` · ${prosesCount} sedang diproses` : ''}
               {target < 30 ? ` · target ${target}` : ''}
             </p>
-            {canInteract && (
-              <p className={`${subCls} mt-1 text-emerald-400/90`}>
-                Klik kotak untuk menandai atau membatalkan juz selesai (termasuk setoran lama).
+            {showAsInteractive && (
+              <p className={`${subCls} mt-1 font-medium text-emerald-400`}>
+                Klik nomor juz untuk menandai atau membatalkan selesai.
               </p>
             )}
           </div>
@@ -163,7 +206,7 @@ export default function JuzMap({
 
       <div
         className="grid grid-cols-6 sm:grid-cols-10 gap-1.5 sm:gap-2"
-        role={canInteract ? 'group' : 'list'}
+        role={showAsInteractive ? 'group' : 'list'}
         aria-label="Peta progres juz 1 sampai 30"
       >
         {ALL_JUZ.map((juz) => {
@@ -174,6 +217,7 @@ export default function JuzMap({
               : 'belum';
           const isTarget = juz === target;
           const isBusy = busyJuz === juz;
+          const isPending = pendingJuz === juz;
           const label =
             status === 'selesai'
               ? `Juz ${juz} selesai`
@@ -184,9 +228,16 @@ export default function JuzMap({
             status === 'selesai'
               ? `Batalkan tanda Juz ${juz} selesai`
               : `Tandai Juz ${juz} selesai`;
-          const classNameCell = cellClasses(status, isTarget, variant, canInteract, isBusy);
+          const classNameCell = cellClasses(
+            status,
+            isTarget,
+            variant,
+            showAsInteractive,
+            isBusy,
+            isPending
+          );
 
-          if (canInteract) {
+          if (showAsInteractive) {
             return (
               <button
                 key={juz}
@@ -194,8 +245,12 @@ export default function JuzMap({
                 title={interactiveLabel}
                 aria-label={interactiveLabel}
                 aria-pressed={status === 'selesai'}
-                disabled={disabled || isBusy}
-                onClick={() => onToggleJuz?.(juz, status === 'selesai')}
+                disabled={actionsLocked}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleCellClick(juz);
+                }}
                 className={classNameCell}
               >
                 {isBusy ? '…' : juz}
@@ -226,6 +281,51 @@ export default function JuzMap({
           );
         })}
       </div>
+
+      {showAsInteractive && pendingJuz != null && (
+        <div className={confirmPanelCls} role="dialog" aria-label="Konfirmasi tanda juz">
+          <p
+            className={`text-sm font-semibold ${
+              variant === 'dark' ? 'text-emerald-100' : 'text-emerald-900'
+            }`}
+          >
+            {pendingCompleted
+              ? `Batalkan tanda Juz ${pendingJuz} selesai?`
+              : pendingHasZiyadah
+                ? `Tandai Juz ${pendingJuz} sebagai selesai?`
+                : `Belum ada ziyadah Juz ${pendingJuz}. Buat catatan penyelesaian?`}
+          </p>
+          <p
+            className={`text-xs mt-1 ${
+              variant === 'dark' ? 'text-emerald-300/80' : 'text-emerald-800/80'
+            }`}
+          >
+            Level dan lencana akan menyesuaikan setelah dikonfirmasi.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={actionsLocked}
+              className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold"
+            >
+              Ya, lanjutkan
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingJuz(null)}
+              disabled={actionsLocked}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold border ${
+                variant === 'dark'
+                  ? 'border-slate-700 text-slate-200 hover:bg-slate-800'
+                  : 'border-slate-300 text-slate-700 hover:bg-white'
+              }`}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
