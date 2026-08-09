@@ -15,6 +15,13 @@ type JuzMapProps = {
   className?: string;
   /** Sembunyikan judul & legenda ringkas */
   compact?: boolean;
+  /** Izinkan klik untuk menandai/membatalkan juz selesai */
+  interactive?: boolean;
+  /** Juz yang sedang disimpan */
+  busyJuz?: number | null;
+  disabled?: boolean;
+  /** currentlyCompleted = true jika juz sudah selesai sebelum diklik */
+  onToggleJuz?: (juz: number, currentlyCompleted: boolean) => void;
 };
 
 const ALL_JUZ = Array.from({ length: 30 }, (_, i) => i + 1);
@@ -22,30 +29,37 @@ const ALL_JUZ = Array.from({ length: 30 }, (_, i) => i + 1);
 function cellClasses(
   status: 'selesai' | 'proses' | 'belum',
   isTarget: boolean,
-  variant: JuzMapVariant
+  variant: JuzMapVariant,
+  interactive: boolean,
+  isBusy: boolean
 ): string {
   const base =
     'relative aspect-square rounded-lg text-[11px] sm:text-xs font-bold flex items-center justify-center transition-colors select-none';
+  const clickable = interactive
+    ? `cursor-pointer hover:scale-[1.04] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
+        isBusy ? 'opacity-50 pointer-events-none' : ''
+      }`
+    : '';
 
   if (variant === 'dark') {
     if (status === 'selesai') {
-      return `${base} bg-emerald-500 text-emerald-950 shadow-sm shadow-emerald-900/40`;
+      return `${base} ${clickable} bg-emerald-500 text-emerald-950 shadow-sm shadow-emerald-900/40`;
     }
     if (status === 'proses') {
-      return `${base} bg-amber-500/25 text-amber-200 border border-amber-500/50`;
+      return `${base} ${clickable} bg-amber-500/25 text-amber-200 border border-amber-500/50`;
     }
-    return `${base} bg-slate-950 text-slate-500 border border-slate-800 ${
+    return `${base} ${clickable} bg-slate-950 text-slate-500 border border-slate-800 ${
       isTarget ? 'ring-2 ring-sky-500/70 ring-offset-1 ring-offset-slate-900' : ''
     }`;
   }
 
   if (status === 'selesai') {
-    return `${base} bg-emerald-600 text-white shadow-sm dark:bg-emerald-500 dark:text-emerald-950`;
+    return `${base} ${clickable} bg-emerald-600 text-white shadow-sm dark:bg-emerald-500 dark:text-emerald-950`;
   }
   if (status === 'proses') {
-    return `${base} bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-500/25 dark:text-amber-200 dark:border-amber-500/50`;
+    return `${base} ${clickable} bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-500/25 dark:text-amber-200 dark:border-amber-500/50`;
   }
-  return `${base} bg-slate-100 text-slate-400 border border-slate-200 dark:bg-slate-950 dark:text-slate-500 dark:border-slate-800 ${
+  return `${base} ${clickable} bg-slate-100 text-slate-400 border border-slate-200 dark:bg-slate-950 dark:text-slate-500 dark:border-slate-800 ${
     isTarget
       ? 'ring-2 ring-sky-400 ring-offset-1 ring-offset-white dark:ring-sky-500/70 dark:ring-offset-slate-900'
       : ''
@@ -59,6 +73,10 @@ export default function JuzMap({
   variant = 'light',
   className = '',
   compact = false,
+  interactive = false,
+  busyJuz = null,
+  disabled = false,
+  onToggleJuz,
 }: JuzMapProps) {
   const completed = new Set(
     completedJuz.filter((j) => Number.isFinite(j) && j >= 1 && j <= 30).map((j) => Math.floor(j))
@@ -69,6 +87,7 @@ export default function JuzMap({
   const target = Math.min(30, Math.max(1, Number(targetJuz) || 30));
   const selesaiCount = completed.size;
   const prosesCount = [...started].filter((j) => !completed.has(j)).length;
+  const canInteract = interactive && !disabled && Boolean(onToggleJuz);
 
   const shell =
     variant === 'dark'
@@ -97,6 +116,11 @@ export default function JuzMap({
               {prosesCount > 0 ? ` · ${prosesCount} sedang diproses` : ''}
               {target < 30 ? ` · target ${target}` : ''}
             </p>
+            {canInteract && (
+              <p className={`${subCls} mt-1 text-emerald-400/90`}>
+                Klik kotak untuk menandai atau membatalkan juz selesai (termasuk setoran lama).
+              </p>
+            )}
           </div>
           <div className={`flex flex-wrap items-center gap-3 ${legendCls}`}>
             <span className="inline-flex items-center gap-1.5">
@@ -139,7 +163,7 @@ export default function JuzMap({
 
       <div
         className="grid grid-cols-6 sm:grid-cols-10 gap-1.5 sm:gap-2"
-        role="list"
+        role={canInteract ? 'group' : 'list'}
         aria-label="Peta progres juz 1 sampai 30"
       >
         {ALL_JUZ.map((juz) => {
@@ -149,12 +173,40 @@ export default function JuzMap({
               ? 'proses'
               : 'belum';
           const isTarget = juz === target;
+          const isBusy = busyJuz === juz;
           const label =
             status === 'selesai'
               ? `Juz ${juz} selesai`
               : status === 'proses'
                 ? `Juz ${juz} sedang diproses`
                 : `Juz ${juz} belum`;
+          const interactiveLabel =
+            status === 'selesai'
+              ? `Batalkan tanda Juz ${juz} selesai`
+              : `Tandai Juz ${juz} selesai`;
+          const classNameCell = cellClasses(status, isTarget, variant, canInteract, isBusy);
+
+          if (canInteract) {
+            return (
+              <button
+                key={juz}
+                type="button"
+                title={interactiveLabel}
+                aria-label={interactiveLabel}
+                aria-pressed={status === 'selesai'}
+                disabled={disabled || isBusy}
+                onClick={() => onToggleJuz?.(juz, status === 'selesai')}
+                className={classNameCell}
+              >
+                {isBusy ? '…' : juz}
+                {status === 'selesai' && !isBusy && (
+                  <span className="absolute bottom-0.5 right-0.5 text-[8px] leading-none opacity-80">
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          }
 
           return (
             <div
@@ -162,7 +214,7 @@ export default function JuzMap({
               role="listitem"
               title={isTarget ? `${label} (target)` : label}
               aria-label={isTarget ? `${label}, target hafalan` : label}
-              className={cellClasses(status, isTarget, variant)}
+              className={classNameCell}
             >
               {juz}
               {status === 'selesai' && (

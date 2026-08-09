@@ -17,6 +17,7 @@ import {
   BookOpen,
   User,
   X,
+  Check,
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -75,6 +76,8 @@ export default function KelolaSantriPage() {
   const [setoranList, setSetoranList] = useState<SetoranRecord[]>([]);
   const [editSetoranId, setEditSetoranId] = useState<string | null>(null);
   const [setoranForm, setSetoranForm] = useState(emptySetoranForm);
+  const [busyJuz, setBusyJuz] = useState<number | null>(null);
+  const [markingSetoranId, setMarkingSetoranId] = useState<string | null>(null);
 
   const showToast = (type: 'success' | 'error', text: string) => {
     setToast({ type, text });
@@ -268,6 +271,124 @@ export default function KelolaSantriPage() {
     }
   };
 
+  const markJuzSelesaiOnSetoran = async (item: SetoranRecord) => {
+    if (item.jenis_setoran !== 'ziyadah' || !item.juz) {
+      showToast('error', 'Hanya setoran ziyadah dengan nomor juz yang bisa ditandai selesai.');
+      return;
+    }
+    if (item.juz_selesai) return;
+
+    setMarkingSetoranId(item.id);
+    try {
+      const { error } = await supabase
+        .from('setoran_hafalan')
+        .update({ juz_selesai: true })
+        .eq('id', item.id);
+      if (error) throw error;
+      showToast('success', `Juz ${item.juz} ditandai selesai.`);
+      await loadData();
+    } catch (err: any) {
+      showToast('error', err.message || 'Gagal menandai juz selesai.');
+    } finally {
+      setMarkingSetoranId(null);
+    }
+  };
+
+  const handleToggleJuzSelesai = async (juz: number, currentlyCompleted: boolean) => {
+    if (busyJuz != null) return;
+
+    if (currentlyCompleted) {
+      if (!confirm(`Batalkan tanda Juz ${juz} selesai? Level & lencana akan menyesuaikan.`)) {
+        return;
+      }
+
+      setBusyJuz(juz);
+      try {
+        const { error } = await supabase
+          .from('setoran_hafalan')
+          .update({ juz_selesai: false })
+          .eq('santri_id', santriId)
+          .eq('juz', juz)
+          .eq('jenis_setoran', 'ziyadah');
+        if (error) throw error;
+        showToast('success', `Tanda Juz ${juz} selesai dibatalkan.`);
+        await loadData();
+      } catch (err: any) {
+        showToast('error', err.message || 'Gagal membatalkan tanda juz.');
+      } finally {
+        setBusyJuz(null);
+      }
+      return;
+    }
+
+    const existingZiyadah = setoranList.filter(
+      (s) => s.jenis_setoran === 'ziyadah' && Number(s.juz) === juz
+    );
+
+    if (existingZiyadah.length === 0) {
+      if (
+        !confirm(
+          `Belum ada setoran ziyadah untuk Juz ${juz}.\n\nBuat catatan penyelesaian Juz ${juz} sekarang?`
+        )
+      ) {
+        return;
+      }
+    } else if (!confirm(`Tandai Juz ${juz} sebagai selesai?`)) {
+      return;
+    }
+
+    setBusyJuz(juz);
+    try {
+      if (existingZiyadah.length > 0) {
+        // Tandai setoran ziyadah terbaru untuk juz ini
+        const latest = [...existingZiyadah].sort((a, b) => {
+          const da = a.tanggal_setoran || a.created_at || '';
+          const db = b.tanggal_setoran || b.created_at || '';
+          return db.localeCompare(da);
+        })[0];
+
+        const { error } = await supabase
+          .from('setoran_hafalan')
+          .update({ juz_selesai: true })
+          .eq('id', latest.id);
+        if (error) throw error;
+      } else {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.user?.id) {
+          throw new Error('Sesi ustadz tidak ditemukan. Silakan login ulang.');
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const { error } = await supabase.from('setoran_hafalan').insert([
+          {
+            santri_id: santriId,
+            ustadz_id: session.user.id,
+            jenis_setoran: 'ziyadah',
+            nama_surah: `Penyelesaian Juz ${juz}`,
+            juz,
+            juz_selesai: true,
+            ayat_mulai: 1,
+            ayat_selesai: 1,
+            tanggal_setoran: today,
+            nilai_kelancaran: 'Lancar',
+            nilai_tajwid: 'Sangat Baik',
+            catatan: 'Ditandai selesai belakangan oleh ustadz',
+          },
+        ]);
+        if (error) throw error;
+      }
+
+      showToast('success', `Juz ${juz} berhasil ditandai selesai.`);
+      await loadData();
+    } catch (err: any) {
+      showToast('error', err.message || 'Gagal menandai juz selesai.');
+    } finally {
+      setBusyJuz(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
@@ -298,7 +419,7 @@ export default function KelolaSantriPage() {
                 Kelola Data Santri
               </h1>
               <p className="text-sm text-slate-400 mt-1">
-                Edit profil dan koreksi riwayat setoran yang salah input.
+                Edit profil, koreksi setoran, dan tandai juz selesai belakangan lewat peta juz.
               </p>
             </div>
           </div>
@@ -394,6 +515,10 @@ export default function KelolaSantriPage() {
             startedJuz={juzProgress.juzDimulaiList}
             targetJuz={targetJuz}
             variant="dark"
+            interactive
+            busyJuz={busyJuz}
+            disabled={busyJuz != null || markingSetoranId != null}
+            onToggleJuz={handleToggleJuzSelesai}
           />
 
           {/* RIWAYAT SETORAN */}
@@ -459,6 +584,23 @@ export default function KelolaSantriPage() {
                           </td>
                           <td className="px-3 py-2.5 text-right">
                             <div className="inline-flex items-center gap-1.5">
+                              {item.jenis_setoran === 'ziyadah' &&
+                                item.juz &&
+                                !item.juz_selesai && (
+                                  <button
+                                    type="button"
+                                    onClick={() => markJuzSelesaiOnSetoran(item)}
+                                    disabled={markingSetoranId === item.id || busyJuz != null}
+                                    className="p-1.5 rounded-lg bg-emerald-950/50 hover:bg-emerald-900 border border-emerald-800/60 text-emerald-400 disabled:opacity-50"
+                                    title={`Tandai Juz ${item.juz} selesai`}
+                                  >
+                                    {markingSetoranId === item.id ? (
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <Check className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                )}
                               <button
                                 type="button"
                                 onClick={() => openEditSetoran(item)}
