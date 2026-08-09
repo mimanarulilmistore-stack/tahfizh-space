@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
 import { getBrowserSupabase } from '@/src/lib/supabase';
+import { getSantriLevel } from '@/src/utils/badgeCalculator';
 import { 
   Users, 
   BookOpen, 
@@ -279,11 +280,16 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Gamifikasi: Helper Badge Level Santri
+  // Gamifikasi: Level santri (selaras dengan utils)
   const getSantriBadge = (totalSetoran: number = 0) => {
-    if (totalSetoran >= 20) return { label: 'Mutaqaddim', color: 'bg-amber-950 border-amber-700 text-amber-300', icon: Crown };
-    if (totalSetoran >= 10) return { label: 'Mutawassit', color: 'bg-blue-950 border-blue-700 text-blue-300', icon: Award };
-    return { label: 'Mubtadi’', color: 'bg-emerald-950 border-emerald-800 text-emerald-300', icon: Sparkles };
+    const level = getSantriLevel(totalSetoran);
+    if (level.id === 'mutaqaddim') {
+      return { label: level.label, color: 'bg-amber-950 border-amber-700 text-amber-300', icon: Crown };
+    }
+    if (level.id === 'mutawassit') {
+      return { label: level.label, color: 'bg-blue-950 border-blue-700 text-blue-300', icon: Award };
+    }
+    return { label: level.label, color: 'bg-emerald-950 border-emerald-800 text-emerald-300', icon: Sparkles };
   };
 
   // Filter Santri
@@ -293,8 +299,9 @@ export default function AdminDashboardPage() {
     (s.nis && s.nis.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Top 3 Santri Teraktif
+  // Top 3 hanya santri yang sudah punya setoran
   const topSantri = [...santriList]
+    .filter((s) => (s.total_setoran || 0) > 0)
     .sort((a, b) => (b.total_setoran || 0) - (a.total_setoran || 0))
     .slice(0, 3);
 
@@ -421,25 +428,32 @@ export default function AdminDashboardPage() {
                   <p className="text-xs text-slate-500 py-4 text-center">Belum ada data setoran.</p>
                 ) : (
                   <div className="space-y-3">
-                    {topSantri.map((s, idx) => (
+                    {topSantri.map((s, idx) => {
+                      const levelBadge = getSantriBadge(s.total_setoran);
+                      const LevelIcon = levelBadge.icon;
+                      return (
                       <div key={s.id} className="flex items-center justify-between bg-slate-950 border border-slate-800/80 p-3 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
                             idx === 0 ? 'bg-amber-500 text-slate-950' : idx === 1 ? 'bg-slate-300 text-slate-950' : 'bg-amber-800 text-white'
                           }`}>
                             {idx + 1}
                           </div>
-                          <div>
-                            <p className="text-xs font-bold text-white leading-tight">{s.nama_lengkap}</p>
-                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">{s.kode_unik}</p>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white leading-tight truncate">{s.nama_lengkap}</p>
+                            <span className={`mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold ${levelBadge.color}`}>
+                              <LevelIcon className="w-2.5 h-2.5" />
+                              {levelBadge.label}
+                            </span>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0 pl-2">
                           <span className="text-xs font-extrabold text-emerald-400">{s.total_setoran}</span>
                           <span className="text-[10px] text-slate-500 block">Setoran</span>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -467,6 +481,12 @@ export default function AdminDashboardPage() {
                 />
               </div>
             </div>
+
+            <p className="text-[11px] text-slate-500 -mt-2">
+              Level badge: <span className="text-emerald-400">Mubtadi&apos;</span> (0–9) ·{' '}
+              <span className="text-blue-400">Mutawassit</span> (10–19) ·{' '}
+              <span className="text-amber-400">Mutaqaddim</span> (20+ setoran)
+            </p>
 
             <div className="overflow-x-auto border border-slate-800 rounded-xl">
               <table className="w-full text-left text-xs text-slate-300">

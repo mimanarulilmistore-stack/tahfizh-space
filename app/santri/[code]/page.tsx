@@ -134,7 +134,8 @@ export default async function SantriDetailPage({ params }: PageProps) {
   const badgeSetoran = records.map((item) => ({
     id: item.id,
     jenis_setoran: item.jenis_setoran,
-    nilai_kualitas: item.nilai_kelancaran || item.nilai_tajwid || undefined,
+    nilai_kelancaran: item.nilai_kelancaran,
+    nilai_tajwid: item.nilai_tajwid,
   }));
 
   return (
