@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import HeaderAdmin from '@/components/HeaderAdmin';
+import { getBrowserSupabase } from '@/src/lib/supabase';
 import { 
   FileText, 
   Printer, 
@@ -18,9 +18,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = getBrowserSupabase();
 
 interface SantriProfile {
   id: string;

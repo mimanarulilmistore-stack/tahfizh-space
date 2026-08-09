@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { getBrowserSupabase } from '@/src/lib/supabase';
 import { 
   Search, 
   BookOpen, 
@@ -18,10 +18,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-// Inisialisasi Supabase Client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = getBrowserSupabase();
 
 interface SantriProfile {
   id: string;

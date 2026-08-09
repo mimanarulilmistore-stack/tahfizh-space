@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import HeaderAdmin from '@/components/HeaderAdmin';
+import { getBrowserSupabase } from '@/src/lib/supabase';
 import { 
   Users, 
   BookOpen, 
@@ -25,10 +25,7 @@ import {
   Flame
 } from 'lucide-react';
 
-// Inisialisasi Supabase Client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = getBrowserSupabase();
 
 interface SantriProfile {
   id: string;
@@ -59,6 +56,7 @@ export default function AdminDashboardPage() {
   const [targetJuz, setTargetJuz] = useState<number>(30);
   const [generatedKodeUnik, setGeneratedKodeUnik] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   // State Toast Notification
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -138,12 +136,36 @@ export default function AdminDashboardPage() {
     return `SNT-${randomNum}`;
   };
 
+  // Pastikan kode unik belum terpakai di database
+  const generateUniqueKode = async () => {
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const kode = generateRandomKode();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('kode_unik', kode)
+        .maybeSingle();
+
+      if (error) {
+        // Jika query gagal (mis. RLS), tetap coba pakai kode yang digenerate
+        console.warn('Cek kode unik gagal, lanjut dengan kode baru:', error.message);
+        return kode;
+      }
+
+      if (!data) return kode;
+    }
+
+    // Fallback lebih unik jika bentrok berulang
+    return `SNT-${Date.now().toString().slice(-6)}`;
+  };
+
   // Open Modal Handler
-  const handleOpenModal = () => {
+  const handleOpenModal = async () => {
     setNamaLengkap('');
     setNis('');
     setTargetJuz(30);
-    setGeneratedKodeUnik(generateRandomKode());
+    setModalError(null);
+    setGeneratedKodeUnik(await generateUniqueKode());
     setIsModalOpen(true);
   };
 
@@ -151,34 +173,75 @@ export default function AdminDashboardPage() {
   const handleCreateSantri = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!namaLengkap.trim()) {
-      setToastMessage({ type: 'error', text: 'Nama lengkap santri wajib diisi.' });
+      setModalError('Nama lengkap santri wajib diisi.');
       return;
     }
 
     setIsSubmitting(true);
+    setModalError(null);
     setToastMessage(null);
 
     try {
-      const payload = {
-        nama_lengkap: namaLengkap.trim(),
-        nis: nis.trim() ? nis.trim() : null,
-        kode_unik: generatedKodeUnik,
-        target_juz: Number(targetJuz),
-        role: 'santri',
+      // Santri tidak punya akun auth; id harus digenerate di client
+      const newId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+      let kodeUnik = generatedKodeUnik || (await generateUniqueKode());
+
+      const tryInsert = async (kode: string) => {
+        const payload = {
+          id: newId,
+          nama_lengkap: namaLengkap.trim(),
+          nis: nis.trim() ? nis.trim() : null,
+          kode_unik: kode,
+          target_juz: Number(targetJuz) || 30,
+          role: 'santri',
+        };
+
+        return supabase.from('profiles').insert([payload]);
       };
 
-      const { error } = await supabase
-        .from('profiles')
-        .insert([payload]);
+      let { error } = await tryInsert(kodeUnik);
 
-      if (error) throw error;
+      // Jika bentrok kode unik, regenerate sekali lalu coba lagi
+      if (error && (error.code === '23505' || /duplicate|unique/i.test(error.message))) {
+        kodeUnik = await generateUniqueKode();
+        setGeneratedKodeUnik(kodeUnik);
+        ({ error } = await tryInsert(kodeUnik));
+      }
 
-      setToastMessage({ type: 'success', text: `Santri baru "${namaLengkap}" berhasil ditambahkan dengan Kode: ${generatedKodeUnik}` });
+      if (error) {
+        // Pesan yang lebih jelas untuk error Supabase umum
+        if (error.code === '42501' || /row-level security|RLS/i.test(error.message)) {
+          throw new Error(
+            'Ditolak oleh keamanan database (RLS). Jalankan kebijakan INSERT untuk role santri di Supabase SQL Editor.'
+          );
+        }
+        if (/foreign key|auth\.users/i.test(error.message)) {
+          throw new Error(
+            'Kolom id masih terikat ke auth.users. Lepas foreign key profiles_id_fkey agar santri bisa ditambah tanpa akun login.'
+          );
+        }
+        if (/null value.*id/i.test(error.message)) {
+          throw new Error('Kolom id wajib diisi. Pastikan insert menyertakan UUID.');
+        }
+        throw error;
+      }
+
+      setToastMessage({
+        type: 'success',
+        text: `Santri baru "${namaLengkap}" berhasil ditambahkan dengan Kode: ${kodeUnik}`,
+      });
       setIsModalOpen(false);
+      setModalError(null);
       fetchDashboardData();
     } catch (err: any) {
       console.error('Insert Santri Error:', err);
-      setToastMessage({ type: 'error', text: err.message || 'Gagal menambahkan santri baru.' });
+      const message = err.message || 'Gagal menambahkan santri baru.';
+      setModalError(message);
+      setToastMessage({ type: 'error', text: message });
     } finally {
       setIsSubmitting(false);
     }
@@ -271,16 +334,24 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* TOAST NOTIFICATION */}
+          {/* TOAST NOTIFICATION (di atas modal) */}
           {toastMessage && (
-            <div className={`p-4 rounded-xl border flex items-start gap-3 transition-all animate-in fade-in duration-300 ${
-              toastMessage.type === 'success' ? 'bg-emerald-950/70 border-emerald-800/80 text-emerald-200' : 'bg-rose-950/70 border-rose-800/80 text-rose-200'
+            <div className={`fixed top-4 right-4 z-[60] max-w-sm p-4 rounded-xl border flex items-start gap-3 shadow-2xl transition-all animate-in fade-in duration-300 ${
+              toastMessage.type === 'success' ? 'bg-emerald-950/95 border-emerald-800/80 text-emerald-200' : 'bg-rose-950/95 border-rose-800/80 text-rose-200'
             }`}>
               {toastMessage.type === 'success' ? <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" /> : <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />}
-              <div className="text-sm">
+              <div className="text-sm flex-1">
                 <span className="font-semibold block">{toastMessage.type === 'success' ? 'Berhasil!' : 'Perhatian'}</span>
                 <p className="opacity-90 mt-0.5">{toastMessage.text}</p>
               </div>
+              <button
+                type="button"
+                onClick={() => setToastMessage(null)}
+                className="text-slate-400 hover:text-white"
+                aria-label="Tutup notifikasi"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
 
@@ -550,7 +621,7 @@ export default function AdminDashboardPage() {
                       <label className="text-[11px] font-semibold text-slate-400">Kode Unik / PIN Portal (Otomatis)</label>
                       <button
                         type="button"
-                        onClick={() => setGeneratedKodeUnik(generateRandomKode())}
+                        onClick={async () => setGeneratedKodeUnik(await generateUniqueKode())}
                         className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1"
                       >
                         <RefreshCw className="w-3 h-3" /> ACAK KODE
@@ -560,6 +631,13 @@ export default function AdminDashboardPage() {
                       {generatedKodeUnik}
                     </p>
                   </div>
+
+                  {modalError && (
+                    <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800/60 text-rose-200 text-xs flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                      <p>{modalError}</p>
+                    </div>
+                  )}
 
                   <div className="pt-2 flex items-center justify-end gap-3">
                     <button

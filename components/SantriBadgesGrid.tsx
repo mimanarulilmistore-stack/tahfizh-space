@@ -1,111 +1,122 @@
 "use client";
 
-import React, { useRef } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import React, { useEffect, useState } from "react";
+import { getBrowserSupabase } from "@/src/lib/supabase";
+import { calculateSantriBadges, type Badge } from "@/src/utils/badgeCalculator";
 
-interface SantriQRCodeCardProps {
-  santri: {
-    id: string;
-    name: string;
-    uniqueCode: string; // Contoh: 'SANTRI-001'
-    classGroup?: string;
-  };
-  baseUrl?: string; // Menampung domain Vercel (opsional)
+interface SantriBadgesGridProps {
+  santriId: string;
+  targetJuz?: number;
 }
 
-export default function SantriQRCodeCard({
-  santri,
-  baseUrl,
-}: SantriQRCodeCardProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
+export default function SantriBadgesGrid({
+  santriId,
+  targetJuz = 30,
+}: SantriBadgesGridProps) {
+  const [badges, setBadges] = useState<Badge[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Penentuan Origin Domain (Otomatis mengambil domain Vercel saat dipublikasikan)
-  const origin =
-    baseUrl ||
-    (typeof window !== "undefined"
-      ? window.location.origin
-      : "https://tahfizh-space.vercel.app");
+  useEffect(() => {
+    const loadBadges = async () => {
+      setLoading(true);
+      try {
+        const supabase = getBrowserSupabase();
+        const { data, error } = await supabase
+          .from("setoran_hafalan")
+          .select("id, jenis_setoran, nilai_kelancaran, nilai_tajwid")
+          .eq("santri_id", santriId);
 
-  // Dynamic Magic Link: URL unik langsung menuju profil santri bersangkutan
-  const qrTargetUrl = `${origin}/santri/${santri.uniqueCode}`;
+        if (error) {
+          console.error("Gagal memuat data badge:", error);
+          setBadges(calculateSantriBadges([], targetJuz));
+          return;
+        }
 
-  // Fungsi untuk mengunduh QR Code sebagai gambar SVG/Cetak Kartu
-  const handleDownloadQR = () => {
-    const svgElement = cardRef.current?.querySelector("svg");
-    if (!svgElement) return;
+        const mapped = (data || []).map((item) => ({
+          id: item.id,
+          jenis_setoran: item.jenis_setoran,
+          nilai_kualitas: item.nilai_kelancaran || item.nilai_tajwid || undefined,
+        }));
 
-    const svgData = new XMLSerializer().serializeToString(svgElement);
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const svgUrl = URL.createObjectURL(svgBlob);
+        setBadges(calculateSantriBadges(mapped, targetJuz));
+      } catch (err) {
+        console.error(err);
+        setBadges(calculateSantriBadges([], targetJuz));
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const downloadLink = document.createElement("a");
-    downloadLink.href = svgUrl;
-    downloadLink.download = `QR-Santri-${santri.uniqueCode}-${santri.name.replace(/\s+/g, "_")}.svg`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-    URL.revokeObjectURL(svgUrl);
-  };
+    if (santriId) loadBadges();
+  }, [santriId, targetJuz]);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="h-24 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse"
+          />
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-emerald-100 bg-white p-6 shadow-xl dark:border-emerald-950 dark:bg-slate-900 transition-all duration-300 hover:shadow-2xl">
-      {/* Header Kartu */}
-      <div className="mb-5 text-center">
-        <div className="inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 mb-2">
-          Kartu Akses Wali Santri
-        </div>
-        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-          {santri.name}
-        </h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Kode Unik: <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{santri.uniqueCode}</span>
-          {santri.classGroup && ` • ${santri.classGroup}`}
-        </p>
-      </div>
-
-      {/* Kontainer QR Code */}
-      <div
-        ref={cardRef}
-        className="flex flex-col items-center justify-center rounded-xl bg-emerald-50/50 p-6 border border-emerald-100 dark:bg-slate-800/50 dark:border-slate-700"
-      >
-        <div className="rounded-lg bg-white p-4 shadow-sm dark:bg-slate-900">
-          <QRCodeSVG
-            value={qrTargetUrl}
-            size={180}
-            bgColor={"#FFFFFF"}
-            fgColor={"#047857"} // Emerald 700
-            level={"H"} // High error correction
-            includeMargin={false}
-          />
-        </div>
-        <p className="mt-4 text-center text-xs text-slate-500 dark:text-slate-400 max-w-[220px]">
-          Pindai QR ini untuk membuka portal mutaba'ah & capaian hafalan secara langsung.
-        </p>
-      </div>
-
-      {/* Tombol Aksi */}
-      <div className="mt-6 flex gap-3">
-        <button
-          onClick={handleDownloadQR}
-          className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {badges.map((badge) => (
+        <div
+          key={badge.id}
+          className={`rounded-xl border p-4 transition-all ${
+            badge.isUnlocked
+              ? "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:border-emerald-800 dark:from-emerald-950/40 dark:to-slate-900"
+              : "border-slate-200 bg-slate-50 opacity-70 dark:border-slate-800 dark:bg-slate-900/60"
+          }`}
         >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-            ></path>
-          </svg>
-          Unduh QR Code
-        </button>
-      </div>
+          <div className="flex items-start gap-3">
+            <div
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${
+                badge.isUnlocked
+                  ? `bg-gradient-to-br ${badge.color} text-white`
+                  : "bg-slate-200 text-slate-500 dark:bg-slate-800"
+              }`}
+            >
+              {badge.icon}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                  {badge.name}
+                </h3>
+                <span
+                  className={`text-[10px] font-semibold uppercase tracking-wide ${
+                    badge.isUnlocked
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-slate-400"
+                  }`}
+                >
+                  {badge.isUnlocked ? "Terbuka" : "Terkunci"}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                {badge.description}
+              </p>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                <div
+                  className={`h-full rounded-full ${
+                    badge.isUnlocked ? "bg-emerald-500" : "bg-slate-400"
+                  }`}
+                  style={{ width: `${badge.progressPercentage}%` }}
+                />
+              </div>
+              <p className="mt-1 text-[10px] text-slate-400 font-mono">
+                {badge.currentValue}/{badge.targetValue}
+              </p>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

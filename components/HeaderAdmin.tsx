@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { getBrowserSupabase } from '@/src/lib/supabase';
 import { 
   ShieldCheck, 
   LayoutDashboard, 
@@ -13,9 +13,7 @@ import {
   X 
 } from 'lucide-react';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = getBrowserSupabase();
 
 export default function HeaderAdmin() {
   const router = useRouter();

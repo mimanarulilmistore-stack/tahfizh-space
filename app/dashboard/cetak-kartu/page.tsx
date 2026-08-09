@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { QRCodeSVG } from 'qrcode.react';
 import HeaderAdmin from '@/components/HeaderAdmin';
+import { getBrowserSupabase } from '@/src/lib/supabase';
 import { 
   Printer, 
   Search, 
@@ -17,10 +17,7 @@ import {
   Square
 } from 'lucide-react';
 
-// Inisialisasi Supabase Client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = getBrowserSupabase();
 
 interface SantriProfile {
   id: string;
