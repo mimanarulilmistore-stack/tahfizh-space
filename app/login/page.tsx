@@ -74,13 +74,16 @@ export default function LoginPage() {
         throw error;
       }
 
-      if (data.session) {
-        router.push('/dashboard');
+      if (!data.session) {
+        throw new Error('Login berhasil tapi sesi tidak terbentuk. Coba muat ulang halaman.');
       }
+
+      // Hard navigation agar cookie sesi terbaca middleware dengan andal
+      window.location.assign('/dashboard');
+      return;
     } catch (err: any) {
       console.error('Login Error:', err);
       setErrorMessage(err.message || 'Terjadi kesalahan saat masuk. Silakan coba lagi.');
-    } finally {
       setLoading(false);
     }
   };
