@@ -10,7 +10,8 @@ import {
   FileText, 
   LogOut, 
   Menu, 
-  X 
+  X,
+  BookOpen
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -26,7 +27,10 @@ export default function HeaderAdmin() {
     window.location.assign('/');
   };
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) =>
+    path === '/dashboard'
+      ? pathname === '/dashboard'
+      : pathname === path || pathname.startsWith(`${path}/`);
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
@@ -65,6 +69,18 @@ export default function HeaderAdmin() {
               Dashboard
             </button>
 
+            <button
+              onClick={() => router.push('/dashboard/input')}
+              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
+                isActive('/dashboard/input') 
+                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300' 
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+              }`}
+            >
+              <BookOpen className="w-4 h-4 text-emerald-400" />
+              Input Setoran
+            </button>
+
             {/* TOMBOL CETAK PIN */}
             <button
               onClick={() => router.push('/dashboard/cetak-kartu')}
@@ -78,7 +94,7 @@ export default function HeaderAdmin() {
               Cetak PIN
             </button>
 
-            {/* TOMBOL LAPORAN (PERSIAPAN MODUL 2) */}
+            {/* TOMBOL LAPORAN */}
             <button
               onClick={() => router.push('/dashboard/laporan')}
               className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
@@ -128,6 +144,17 @@ export default function HeaderAdmin() {
           >
             <LayoutDashboard className="w-4 h-4 text-emerald-400" />
             Dashboard
+          </button>
+
+          <button
+            onClick={() => {
+              router.push('/dashboard/input');
+              setIsMobileMenuOpen(false);
+            }}
+            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
+          >
+            <BookOpen className="w-4 h-4 text-emerald-400" />
+            Input Setoran
           </button>
 
           <button

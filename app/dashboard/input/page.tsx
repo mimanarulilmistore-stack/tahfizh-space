@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import HeaderAdmin from '@/components/HeaderAdmin';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import { 
   BookOpen, 
@@ -16,7 +17,8 @@ import {
   Sparkles, 
   ShieldCheck,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -28,8 +30,9 @@ interface SantriOption {
   nis: string | null;
 }
 
-export default function InputSetoranPage() {
+function InputSetoranContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // State Authentikasi & Loading
   const [loadingSession, setLoadingSession] = useState(true);
@@ -65,14 +68,12 @@ export default function InputSetoranPage() {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
-          // Redirect ke login jika belum ada sesi
           router.push('/login');
           return;
         }
 
         setUstadzId(session.user.id);
 
-        // Fetch Daftar Santri untuk Dropdown
         const { data: santriData, error: santriError } = await supabase
           .from('profiles')
           .select('id, nama_lengkap, kode_unik, nis')
@@ -82,7 +83,14 @@ export default function InputSetoranPage() {
         if (santriError) {
           console.error('Error fetching santri:', santriError);
         } else {
-          setSantriList(santriData || []);
+          const list = santriData || [];
+          setSantriList(list);
+
+          // Prefill dari query ?santri_id=...
+          const preselectId = searchParams.get('santri_id');
+          if (preselectId && list.some((s) => s.id === preselectId)) {
+            setSelectedSantriId(preselectId);
+          }
         }
       } catch (err) {
         console.error('Auth check error:', err);
@@ -93,7 +101,7 @@ export default function InputSetoranPage() {
     };
 
     checkAuthAndFetchSantri();
-  }, [router]);
+  }, [router, searchParams]);
 
   // Reset Form setelah Submit Berhasil
   const resetForm = () => {
@@ -195,12 +203,22 @@ export default function InputSetoranPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+      <HeaderAdmin />
+
+      <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-6">
           <div>
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="text-xs text-emerald-400 hover:underline flex items-center gap-1.5 mb-2 font-medium"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Kembali ke Dashboard
+            </button>
             <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold tracking-wide uppercase mb-1">
               <Sparkles className="w-4 h-4" />
               Modul Pengampu Tahfizh
@@ -487,6 +505,24 @@ export default function InputSetoranPage() {
         </form>
 
       </div>
+      </div>
     </div>
+  );
+}
+
+export default function InputSetoranPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans">
+          <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 px-6 py-4 rounded-2xl shadow-xl">
+            <RefreshCw className="w-5 h-5 text-emerald-400 animate-spin" />
+            <span className="text-sm font-medium text-slate-300">Memuat halaman input...</span>
+          </div>
+        </div>
+      }
+    >
+      <InputSetoranContent />
+    </Suspense>
   );
 }
