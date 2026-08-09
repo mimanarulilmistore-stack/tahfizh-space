@@ -17,13 +17,13 @@ export default function SantriBadgesGrid({
   initialSetoran,
 }: SantriBadgesGridProps) {
   const [badges, setBadges] = useState<Badge[]>(() =>
-    initialSetoran ? calculateSantriBadges(initialSetoran, targetJuz) : []
+    initialSetoran ? calculateSantriBadges(initialSetoran) : []
   );
   const [loading, setLoading] = useState(!initialSetoran);
 
   useEffect(() => {
     if (initialSetoran) {
-      setBadges(calculateSantriBadges(initialSetoran, targetJuz));
+      setBadges(calculateSantriBadges(initialSetoran));
       setLoading(false);
       return;
     }
@@ -34,26 +34,28 @@ export default function SantriBadgesGrid({
         const supabase = getBrowserSupabase();
         const { data, error } = await supabase
           .from("setoran_hafalan")
-          .select("id, jenis_setoran, nilai_kelancaran, nilai_tajwid")
+          .select("id, jenis_setoran, juz, juz_selesai, nilai_kelancaran, nilai_tajwid")
           .eq("santri_id", santriId);
 
         if (error) {
           console.error("Gagal memuat data badge:", error);
-          setBadges(calculateSantriBadges([], targetJuz));
+          setBadges(calculateSantriBadges([]));
           return;
         }
 
         const mapped = (data || []).map((item) => ({
           id: item.id,
           jenis_setoran: item.jenis_setoran,
+          juz: item.juz,
+          juz_selesai: item.juz_selesai,
           nilai_kelancaran: item.nilai_kelancaran,
           nilai_tajwid: item.nilai_tajwid,
         }));
 
-        setBadges(calculateSantriBadges(mapped, targetJuz));
+        setBadges(calculateSantriBadges(mapped));
       } catch (err) {
         console.error(err);
-        setBadges(calculateSantriBadges([], targetJuz));
+        setBadges(calculateSantriBadges([]));
       } finally {
         setLoading(false);
       }

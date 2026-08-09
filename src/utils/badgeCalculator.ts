@@ -14,50 +14,55 @@ export interface Badge {
 export interface SetoranItem {
   id: string;
   jenis_setoran: string; // 'ziyadah' | 'murajaah'
+  juz?: number | null;
+  juz_selesai?: boolean | null;
   nilai_kelancaran?: string | null;
   nilai_tajwid?: string | null;
-  /** @deprecated gunakan nilai_kelancaran / nilai_tajwid */
   nilai_kualitas?: string;
 }
 
-export type SantriLevelId = 'mubtadi' | 'mutawassit' | 'mutaqaddim';
+export type SantriLevelId =
+  | 'mubtadi'
+  | 'mutawassit'
+  | 'mutaqaddim'
+  | 'hafizh'
+  | 'khatam';
 
 export interface SantriLevel {
   id: SantriLevelId;
   label: string;
   description: string;
-  minSetoran: number;
+  minJuz: number;
   nextMin: number | null;
 }
 
+/** Level berdasarkan jumlah juz yang sudah ditandai selesai. */
 export const SANTRI_LEVELS: SantriLevel[] = [
-  {
-    id: 'mubtadi',
-    label: "Mubtadi'",
-    description: '0–9 setoran',
-    minSetoran: 0,
-    nextMin: 10,
-  },
-  {
-    id: 'mutawassit',
-    label: 'Mutawassit',
-    description: '10–19 setoran',
-    minSetoran: 10,
-    nextMin: 20,
-  },
-  {
-    id: 'mutaqaddim',
-    label: 'Mutaqaddim',
-    description: '20+ setoran',
-    minSetoran: 20,
-    nextMin: null,
-  },
+  { id: 'mubtadi', label: "Mubtadi'", description: '0–2 juz selesai', minJuz: 0, nextMin: 3 },
+  { id: 'mutawassit', label: 'Mutawassit', description: '3–9 juz selesai', minJuz: 3, nextMin: 10 },
+  { id: 'mutaqaddim', label: 'Mutaqaddim', description: '10–19 juz selesai', minJuz: 10, nextMin: 20 },
+  { id: 'hafizh', label: 'Hafizh', description: '20–29 juz selesai', minJuz: 20, nextMin: 30 },
+  { id: 'khatam', label: 'Khatam', description: '30 juz selesai', minJuz: 30, nextMin: null },
 ];
 
-/** Level dashboard berdasarkan total setoran (ziyadah + murajaah). */
-export function getSantriLevel(totalSetoran: number = 0): SantriLevel {
-  if (totalSetoran >= 20) return SANTRI_LEVELS[2];
-  if (totalSetoran >= 10) return SANTRI_LEVELS[1];
+export interface JuzProgress {
+  /** Nomor juz yang sudah ditandai selesai (unik, 1–30) */
+  juzSelesaiList: number[];
+  /** Jumlah juz selesai */
+  juzSelesaiCount: number;
+  /** Juz tertinggi yang pernah disetor sebagai ziyadah */
+  juzTertinggi: number;
+  totalZiyadah: number;
+  totalMurajaah: number;
+  totalSetoran: number;
+  totalMumtaz: number;
+}
+
+export function getSantriLevel(juzSelesaiCount: number = 0): SantriLevel {
+  if (juzSelesaiCount >= 30) return SANTRI_LEVELS[4];
+  if (juzSelesaiCount >= 20) return SANTRI_LEVELS[3];
+  if (juzSelesaiCount >= 10) return SANTRI_LEVELS[2];
+  if (juzSelesaiCount >= 3) return SANTRI_LEVELS[1];
   return SANTRI_LEVELS[0];
 }
 
@@ -73,26 +78,63 @@ function isMumtazNilai(...nilaiList: Array<string | null | undefined>): boolean 
   });
 }
 
-/**
- * Estimasi kasar: ~10 ziyadah ≈ 1 juz.
- * Digunakan hanya untuk badge milestone, bukan laporan resmi.
- */
-const ZIYADAH_PER_JUZ = 10;
+/** Hitung progres juz dari riwayat setoran (hanya ziyadah yang menambah juz). */
+export function computeJuzProgress(setoranList: SetoranItem[]): JuzProgress {
+  const completed = new Set<number>();
+  let juzTertinggi = 0;
+  let totalZiyadah = 0;
+  let totalMurajaah = 0;
+  let totalMumtaz = 0;
 
-export function calculateSantriBadges(
-  setoranList: SetoranItem[],
-  _targetJuz: number = 30
-): Badge[] {
-  const totalSetoran = setoranList.length;
-  const totalZiyadah = setoranList.filter((s) => s.jenis_setoran === 'ziyadah').length;
-  const totalMurajaah = setoranList.filter((s) => s.jenis_setoran === 'murajaah').length;
-  const totalMumtaz = setoranList.filter((s) =>
-    isMumtazNilai(s.nilai_kelancaran, s.nilai_tajwid, s.nilai_kualitas)
-  ).length;
+  for (const s of setoranList) {
+    if (isMumtazNilai(s.nilai_kelancaran, s.nilai_tajwid, s.nilai_kualitas)) {
+      totalMumtaz += 1;
+    }
 
-  const totalJuzCalculated = Math.floor(totalZiyadah / ZIYADAH_PER_JUZ);
+    if (s.jenis_setoran === 'murajaah') {
+      totalMurajaah += 1;
+      continue;
+    }
 
-  const badgesDefinition: Badge[] = [
+    if (s.jenis_setoran !== 'ziyadah') continue;
+    totalZiyadah += 1;
+
+    const j = Number(s.juz);
+    if (!Number.isFinite(j) || j < 1 || j > 30) continue;
+
+    juzTertinggi = Math.max(juzTertinggi, j);
+    if (s.juz_selesai) completed.add(Math.floor(j));
+  }
+
+  const juzSelesaiList = [...completed].sort((a, b) => a - b);
+
+  return {
+    juzSelesaiList,
+    juzSelesaiCount: juzSelesaiList.length,
+    juzTertinggi,
+    totalZiyadah,
+    totalMurajaah,
+    totalSetoran: setoranList.length,
+    totalMumtaz,
+  };
+}
+
+const JUZ_MILESTONES = [
+  { id: 'juz_1', name: 'Pionir 1 Juz', target: 1, icon: '🥉', color: 'from-amber-700 to-yellow-800', tier: 'bronze' as const },
+  { id: 'juz_3', name: 'Pejuang 3 Juz', target: 3, icon: '🥈', color: 'from-slate-300 to-slate-500', tier: 'silver' as const },
+  { id: 'juz_5', name: 'Bintang 5 Juz', target: 5, icon: '🏆', color: 'from-amber-400 to-yellow-500', tier: 'gold' as const },
+  { id: 'juz_10', name: 'Penjelajah 10 Juz', target: 10, icon: '🧭', color: 'from-cyan-500 to-blue-600', tier: 'silver' as const },
+  { id: 'juz_15', name: 'Penjaga 15 Juz', target: 15, icon: '📿', color: 'from-indigo-500 to-violet-600', tier: 'gold' as const },
+  { id: 'juz_20', name: 'Pendaki 20 Juz', target: 20, icon: '⛰️', color: 'from-orange-500 to-rose-600', tier: 'gold' as const },
+  { id: 'juz_25', name: 'Hampir Khatam 25 Juz', target: 25, icon: '🌙', color: 'from-violet-500 to-fuchsia-600', tier: 'special' as const },
+  { id: 'juz_30', name: 'Khatam 30 Juz', target: 30, icon: '👑', color: 'from-amber-300 to-yellow-500', tier: 'special' as const },
+];
+
+export function calculateSantriBadges(setoranList: SetoranItem[]): Badge[] {
+  const progress = computeJuzProgress(setoranList);
+  const { juzSelesaiCount, totalSetoran, totalZiyadah, totalMurajaah, totalMumtaz } = progress;
+
+  const baseBadges: Badge[] = [
     {
       id: 'first_step',
       name: 'Langkah Pertama',
@@ -108,7 +150,7 @@ export function calculateSantriBadges(
     {
       id: 'ziyadah_warrior',
       name: 'Pejuang Ziyadah',
-      description: 'Menyelesaikan minimal 10 kali setoran hafalan baru (Ziyadah)',
+      description: 'Menyelesaikan minimal 10 kali setoran ziyadah',
       icon: '⚡',
       color: 'from-amber-500 to-orange-600',
       tier: 'silver',
@@ -120,7 +162,7 @@ export function calculateSantriBadges(
     {
       id: 'murajaah_master',
       name: 'Penjaga Hafalan',
-      description: 'Menyelesaikan minimal 15 kali setoran pengulangan (Murajaah)',
+      description: 'Menyelesaikan minimal 15 kali murajaah',
       icon: '🛡️',
       color: 'from-blue-500 to-indigo-600',
       tier: 'silver',
@@ -130,9 +172,33 @@ export function calculateSantriBadges(
       targetValue: 15,
     },
     {
+      id: 'murajaah_istiqamah',
+      name: 'Murajaah Istiqamah',
+      description: 'Menyelesaikan minimal 30 kali murajaah',
+      icon: '🔁',
+      color: 'from-sky-500 to-blue-700',
+      tier: 'gold',
+      isUnlocked: totalMurajaah >= 30,
+      progressPercentage: Math.min(100, (totalMurajaah / 30) * 100),
+      currentValue: totalMurajaah,
+      targetValue: 30,
+    },
+    {
+      id: 'murajaah_sejati',
+      name: 'Penjaga Hafalan Sejati',
+      description: 'Menyelesaikan minimal 60 kali murajaah',
+      icon: '💎',
+      color: 'from-teal-400 to-emerald-700',
+      tier: 'special',
+      isUnlocked: totalMurajaah >= 60,
+      progressPercentage: Math.min(100, (totalMurajaah / 60) * 100),
+      currentValue: totalMurajaah,
+      targetValue: 60,
+    },
+    {
       id: 'mumtaz_student',
       name: 'Bintang Mumtaz',
-      description: 'Mendapatkan nilai Sangat Baik / Sangat Lancar minimal 5 kali',
+      description: 'Nilai Sangat Baik / Sangat Lancar minimal 5 kali',
       icon: '⭐',
       color: 'from-purple-500 to-pink-600',
       tier: 'gold',
@@ -141,43 +207,20 @@ export function calculateSantriBadges(
       currentValue: totalMumtaz,
       targetValue: 5,
     },
-    {
-      id: 'juz_bronze',
-      name: 'Pionir 1 Juz',
-      description: 'Estimasi capaian ~1 Juz (10 setoran ziyadah)',
-      icon: '🥉',
-      color: 'from-amber-700 to-yellow-800',
-      tier: 'bronze',
-      isUnlocked: totalJuzCalculated >= 1,
-      progressPercentage: Math.min(100, (totalZiyadah / ZIYADAH_PER_JUZ) * 100),
-      currentValue: Math.min(1, totalJuzCalculated),
-      targetValue: 1,
-    },
-    {
-      id: 'juz_silver',
-      name: 'Pejuang 3 Juz',
-      description: 'Estimasi capaian ~3 Juz (30 setoran ziyadah)',
-      icon: '🥈',
-      color: 'from-slate-300 to-slate-500',
-      tier: 'silver',
-      isUnlocked: totalJuzCalculated >= 3,
-      progressPercentage: Math.min(100, (totalZiyadah / (ZIYADAH_PER_JUZ * 3)) * 100),
-      currentValue: Math.min(3, totalJuzCalculated),
-      targetValue: 3,
-    },
-    {
-      id: 'juz_gold',
-      name: 'Bintang 5 Juz',
-      description: 'Estimasi capaian ~5 Juz (50 setoran ziyadah)',
-      icon: '🏆',
-      color: 'from-amber-400 to-yellow-500',
-      tier: 'gold',
-      isUnlocked: totalJuzCalculated >= 5,
-      progressPercentage: Math.min(100, (totalZiyadah / (ZIYADAH_PER_JUZ * 5)) * 100),
-      currentValue: Math.min(5, totalJuzCalculated),
-      targetValue: 5,
-    },
   ];
 
-  return badgesDefinition;
+  const juzBadges: Badge[] = JUZ_MILESTONES.map((m) => ({
+    id: m.id,
+    name: m.name,
+    description: `Menyelesaikan ${m.target} juz (ditandai selesai oleh ustadz)`,
+    icon: m.icon,
+    color: m.color,
+    tier: m.tier,
+    isUnlocked: juzSelesaiCount >= m.target,
+    progressPercentage: Math.min(100, (juzSelesaiCount / m.target) * 100),
+    currentValue: Math.min(juzSelesaiCount, m.target),
+    targetValue: m.target,
+  }));
+
+  return [...baseBadges, ...juzBadges];
 }

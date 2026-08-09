@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
 import { getBrowserSupabase } from '@/src/lib/supabase';
-import { getSantriLevel } from '@/src/utils/badgeCalculator';
+import { computeJuzProgress, getSantriLevel } from '@/src/utils/badgeCalculator';
 import { 
   Users, 
   BookOpen, 
@@ -12,18 +12,17 @@ import {
   Sparkles, 
   UserPlus, 
   Search, 
-  ArrowRight, 
   Trash2, 
   ExternalLink, 
   PlusCircle, 
   X, 
-  ShieldCheck, 
   RefreshCw, 
   CheckCircle, 
   AlertCircle,
   Crown,
   Award,
-  Flame
+  Flame,
+  Star
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -36,6 +35,8 @@ interface SantriProfile {
   target_juz: number;
   created_at: string;
   total_setoran?: number;
+  juz_selesai_count?: number;
+  juz_tertinggi?: number;
 }
 
 export default function AdminDashboardPage() {
@@ -105,22 +106,28 @@ export default function AdminDashboardPage() {
       if (setoranError) console.error('Error counting setoran:', setoranError);
       setTotalSetoranGlobal(setoranCount || 0);
 
-      // Fetch Count Setoran per Santri untuk Gamifikasi / Leaderboard
+      // Fetch setoran untuk agregasi leaderboard & level (berdasarkan juz selesai)
       const { data: setoranData } = await supabase
         .from('setoran_hafalan')
-        .select('santri_id');
+        .select('id, santri_id, jenis_setoran, juz, juz_selesai, nilai_kelancaran, nilai_tajwid');
 
-      const setoranMap: Record<string, number> = {};
+      const bySantri: Record<string, any[]> = {};
       if (setoranData) {
         setoranData.forEach((s) => {
-          setoranMap[s.santri_id] = (setoranMap[s.santri_id] || 0) + 1;
+          if (!bySantri[s.santri_id]) bySantri[s.santri_id] = [];
+          bySantri[s.santri_id].push(s);
         });
       }
 
-      const formattedSantri = (profiles || []).map((p) => ({
-        ...p,
-        total_setoran: setoranMap[p.id] || 0,
-      }));
+      const formattedSantri = (profiles || []).map((p) => {
+        const progress = computeJuzProgress(bySantri[p.id] || []);
+        return {
+          ...p,
+          total_setoran: progress.totalSetoran,
+          juz_selesai_count: progress.juzSelesaiCount,
+          juz_tertinggi: progress.juzTertinggi,
+        };
+      });
 
       setSantriList(formattedSantri);
     } catch (err: any) {
@@ -280,9 +287,15 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Gamifikasi: Level santri (selaras dengan utils)
-  const getSantriBadge = (totalSetoran: number = 0) => {
-    const level = getSantriLevel(totalSetoran);
+  // Gamifikasi: Level berdasarkan jumlah juz selesai
+  const getSantriBadge = (juzSelesaiCount: number = 0) => {
+    const level = getSantriLevel(juzSelesaiCount);
+    if (level.id === 'khatam') {
+      return { label: level.label, color: 'bg-yellow-950 border-yellow-600 text-yellow-300', icon: Crown };
+    }
+    if (level.id === 'hafizh') {
+      return { label: level.label, color: 'bg-violet-950 border-violet-700 text-violet-300', icon: Star };
+    }
     if (level.id === 'mutaqaddim') {
       return { label: level.label, color: 'bg-amber-950 border-amber-700 text-amber-300', icon: Crown };
     }
@@ -299,10 +312,14 @@ export default function AdminDashboardPage() {
     (s.nis && s.nis.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Top 3 hanya santri yang sudah punya setoran
+  // Top 3 berdasarkan juz selesai (lalu total setoran sebagai tie-break)
   const topSantri = [...santriList]
-    .filter((s) => (s.total_setoran || 0) > 0)
-    .sort((a, b) => (b.total_setoran || 0) - (a.total_setoran || 0))
+    .filter((s) => (s.juz_selesai_count || 0) > 0 || (s.total_setoran || 0) > 0)
+    .sort((a, b) => {
+      const juzDiff = (b.juz_selesai_count || 0) - (a.juz_selesai_count || 0);
+      if (juzDiff !== 0) return juzDiff;
+      return (b.total_setoran || 0) - (a.total_setoran || 0);
+    })
     .slice(0, 3);
 
   if (loadingSession) {
@@ -417,7 +434,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <Trophy className="w-4 h-4 text-amber-400" />
-                    Santri Teraktif (Top Setoran)
+                    Santri Teraktif (Top Juz Selesai)
                   </h3>
                   <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-mono">
                     Leaderboard
@@ -429,7 +446,7 @@ export default function AdminDashboardPage() {
                 ) : (
                   <div className="space-y-3">
                     {topSantri.map((s, idx) => {
-                      const levelBadge = getSantriBadge(s.total_setoran);
+                      const levelBadge = getSantriBadge(s.juz_selesai_count || 0);
                       const LevelIcon = levelBadge.icon;
                       return (
                       <div key={s.id} className="flex items-center justify-between bg-slate-950 border border-slate-800/80 p-3 rounded-xl">
@@ -448,8 +465,8 @@ export default function AdminDashboardPage() {
                           </div>
                         </div>
                         <div className="text-right shrink-0 pl-2">
-                          <span className="text-xs font-extrabold text-emerald-400">{s.total_setoran}</span>
-                          <span className="text-[10px] text-slate-500 block">Setoran</span>
+                          <span className="text-xs font-extrabold text-emerald-400">{s.juz_selesai_count || 0}</span>
+                          <span className="text-[10px] text-slate-500 block">Juz selesai</span>
                         </div>
                       </div>
                       );
@@ -483,9 +500,11 @@ export default function AdminDashboardPage() {
             </div>
 
             <p className="text-[11px] text-slate-500 -mt-2">
-              Level badge: <span className="text-emerald-400">Mubtadi&apos;</span> (0–9) ·{' '}
-              <span className="text-blue-400">Mutawassit</span> (10–19) ·{' '}
-              <span className="text-amber-400">Mutaqaddim</span> (20+ setoran)
+              Level (juz selesai): <span className="text-emerald-400">Mubtadi&apos;</span> 0–2 ·{' '}
+              <span className="text-blue-400">Mutawassit</span> 3–9 ·{' '}
+              <span className="text-amber-400">Mutaqaddim</span> 10–19 ·{' '}
+              <span className="text-violet-400">Hafizh</span> 20–29 ·{' '}
+              <span className="text-yellow-300">Khatam</span> 30
             </p>
 
             <div className="overflow-x-auto border border-slate-800 rounded-xl">
@@ -496,7 +515,7 @@ export default function AdminDashboardPage() {
                     <th className="px-4 py-3.5">Kode Unik (PIN)</th>
                     <th className="px-4 py-3.5">Target</th>
                     <th className="px-4 py-3.5">Level Badge</th>
-                    <th className="px-4 py-3.5 text-center">Total Setoran</th>
+                    <th className="px-4 py-3.5 text-center">Juz Selesai</th>
                     <th className="px-4 py-3.5 text-right">Tautan Cepat (Aksi)</th>
                   </tr>
                 </thead>
@@ -516,7 +535,7 @@ export default function AdminDashboardPage() {
                     </tr>
                   ) : (
                     filteredSantri.map((santri) => {
-                      const badge = getSantriBadge(santri.total_setoran);
+                      const badge = getSantriBadge(santri.juz_selesai_count || 0);
                       const BadgeIcon = badge.icon;
 
                       return (
@@ -543,8 +562,9 @@ export default function AdminDashboardPage() {
                             </span>
                           </td>
 
-                          <td className="px-4 py-3.5 text-center font-bold text-emerald-400 text-sm">
-                            {santri.total_setoran}
+                          <td className="px-4 py-3.5 text-center">
+                            <span className="font-bold text-emerald-400 text-sm">{santri.juz_selesai_count || 0}</span>
+                            <span className="block text-[10px] text-slate-500">{santri.total_setoran || 0} setoran</span>
                           </td>
 
                           <td className="px-4 py-3.5 text-right">

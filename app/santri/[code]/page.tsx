@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import SantriBadgesGrid from "@/components/SantriBadgesGrid";
 import Link from "next/link";
+import { computeJuzProgress, getSantriLevel } from "@/src/utils/badgeCalculator";
 
 interface PageProps {
   params: Promise<{
@@ -20,6 +21,8 @@ type SetoranPublic = {
   id: string;
   jenis_setoran: string;
   nama_surah: string | null;
+  juz: number | null;
+  juz_selesai: boolean | null;
   ayat_mulai: number | null;
   ayat_selesai: number | null;
   nilai_kelancaran: string | null;
@@ -121,22 +124,24 @@ export default async function SantriDetailPage({ params }: PageProps) {
     const { data: setoranList } = await supabase
       .from("setoran_hafalan")
       .select(
-        "id, jenis_setoran, nama_surah, ayat_mulai, ayat_selesai, nilai_kelancaran, nilai_tajwid, catatan, created_at"
+        "id, jenis_setoran, nama_surah, juz, juz_selesai, ayat_mulai, ayat_selesai, nilai_kelancaran, nilai_tajwid, catatan, created_at"
       )
       .eq("santri_id", santri.id)
       .order("created_at", { ascending: false });
     records = (setoranList || []) as SetoranPublic[];
   }
 
-  const totalZiyadah = records.filter((r) => r.jenis_setoran === "ziyadah").length;
-  const totalMurajaah = records.filter((r) => r.jenis_setoran === "murajaah").length;
-
   const badgeSetoran = records.map((item) => ({
     id: item.id,
     jenis_setoran: item.jenis_setoran,
+    juz: item.juz,
+    juz_selesai: item.juz_selesai,
     nilai_kelancaran: item.nilai_kelancaran,
     nilai_tajwid: item.nilai_tajwid,
   }));
+
+  const progress = computeJuzProgress(badgeSetoran);
+  const level = getSantriLevel(progress.juzSelesaiCount);
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 sm:p-8 dark:bg-slate-950 transition-colors">
@@ -161,14 +166,14 @@ export default async function SantriDetailPage({ params }: PageProps) {
 
           <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/40">
             <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
-              Target Hafalan
+              Progres Juz Selesai
             </p>
             <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-              {santri.target_juz || 30}{" "}
-              <span className="text-sm font-normal">Juz</span>
+              {progress.juzSelesaiCount}{" "}
+              <span className="text-sm font-normal">/ 30 Juz</span>
             </p>
             <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 mt-1">
-              {totalZiyadah} ziyadah · {totalMurajaah} murajaah
+              Level: {level.label} · {progress.totalZiyadah} ziyadah · {progress.totalMurajaah} murajaah
             </p>
           </div>
         </header>

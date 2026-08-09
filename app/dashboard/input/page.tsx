@@ -53,6 +53,7 @@ export default function InputSetoranPage() {
   const [nilaiKelancaran, setNilaiKelancaran] = useState('Lancar');
   const [nilaiTajwid, setNilaiTajwid] = useState('Sangat Baik');
   const [catatan, setCatatan] = useState('');
+  const [juzSelesai, setJuzSelesai] = useState(false);
 
   // State Notification Feedback
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -106,6 +107,7 @@ export default function InputSetoranPage() {
     setNilaiKelancaran('Lancar');
     setNilaiTajwid('Sangat Baik');
     setCatatan('');
+    setJuzSelesai(false);
   };
 
   // Submit Handler
@@ -126,6 +128,10 @@ export default function InputSetoranPage() {
       setToastMessage({ type: 'error', text: 'Ayat mulai dan ayat selesai harus diisi!' });
       return;
     }
+    if (!juz || juz < 1 || juz > 30) {
+      setToastMessage({ type: 'error', text: 'Nomor juz wajib diisi (1–30).' });
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -136,6 +142,7 @@ export default function InputSetoranPage() {
         jenis_setoran: jenisSetoran,
         nama_surah: namaSurah.trim(),
         juz: Number(juz),
+        juz_selesai: jenisSetoran === 'ziyadah' ? juzSelesai : false,
         ayat_mulai: Number(ayatMulai),
         ayat_selesai: Number(ayatSelesai),
         tanggal_setoran: tanggalSetoran,
@@ -284,7 +291,10 @@ export default function InputSetoranPage() {
 
                 <button
                   type="button"
-                  onClick={() => setJenisSetoran('murajaah')}
+                  onClick={() => {
+                    setJenisSetoran('murajaah');
+                    setJuzSelesai(false);
+                  }}
                   className={`py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                     jenisSetoran === 'murajaah'
                       ? 'bg-amber-600 text-white shadow-md'
@@ -376,6 +386,26 @@ export default function InputSetoranPage() {
                 className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all text-sm font-medium font-mono"
               />
             </div>
+
+            {/* Tandai Juz Selesai — hanya untuk ziyadah */}
+            {jenisSetoran === 'ziyadah' && (
+              <div className="sm:col-span-2 lg:col-span-4">
+                <label className="flex items-start gap-3 p-4 rounded-xl border border-emerald-800/50 bg-emerald-950/30 cursor-pointer hover:bg-emerald-950/50 transition-all">
+                  <input
+                    type="checkbox"
+                    checked={juzSelesai}
+                    onChange={(e) => setJuzSelesai(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-950 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="text-sm text-slate-200">
+                    <span className="font-bold text-emerald-300 block">Tandai Juz {juz || '—'} selesai</span>
+                    <span className="text-xs text-slate-400">
+                      Centang hanya jika hafalan juz ini sudah tuntas (bukan sekadar setoran sebagian). Ini menentukan level &amp; lencana sampai Khatam 30.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
 
           </div>
 
