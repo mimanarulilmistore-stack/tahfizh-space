@@ -130,11 +130,17 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Helper Auto-Generate Kode Unik (Contoh: SNT-839)
+  // Helper Auto-Generate Kode Unik (aman + mudah dibaca di kartu)
+  // Contoh: SNT-K7M2P9QX — crypto random, tanpa huruf/angka yang mirip (0/O, 1/I)
   const generateRandomKode = () => {
-    // 6 digit agar lebih sulit ditebak dari QR/PIN orang lain
-    const randomNum = Math.floor(100000 + Math.random() * 900000);
-    return `SNT-${randomNum}`;
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    let suffix = '';
+    for (let i = 0; i < bytes.length; i++) {
+      suffix += alphabet[bytes[i] % alphabet.length];
+    }
+    return `SNT-${suffix}`;
   };
 
   // Pastikan kode unik belum terpakai di database
@@ -148,7 +154,6 @@ export default function AdminDashboardPage() {
         .maybeSingle();
 
       if (error) {
-        // Jika query gagal (mis. RLS), tetap coba pakai kode yang digenerate
         console.warn('Cek kode unik gagal, lanjut dengan kode baru:', error.message);
         return kode;
       }
@@ -156,8 +161,12 @@ export default function AdminDashboardPage() {
       if (!data) return kode;
     }
 
-    // Fallback lebih unik jika bentrok berulang
-    return `SNT-${Date.now().toString().slice(-6)}`;
+    // Fallback sangat jarang: tambah 4 karakter lagi
+    const bytes = new Uint8Array(4);
+    crypto.getRandomValues(bytes);
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const extra = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+    return `SNT-${Date.now().toString(36).toUpperCase()}${extra}`.slice(0, 16);
   };
 
   // Open Modal Handler
