@@ -69,7 +69,7 @@ export default function HomePage() {
               </p>
             </div>
             <Link
-              href="/login?role=santri"
+              href="/portal"
               className="inline-flex items-center justify-between w-full text-sm font-semibold text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform"
             >
               <span>Masuk via Kode Unik</span>

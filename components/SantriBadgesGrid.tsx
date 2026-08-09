@@ -2,21 +2,32 @@
 
 import React, { useEffect, useState } from "react";
 import { getBrowserSupabase } from "@/src/lib/supabase";
-import { calculateSantriBadges, type Badge } from "@/src/utils/badgeCalculator";
+import { calculateSantriBadges, type Badge, type SetoranItem } from "@/src/utils/badgeCalculator";
 
 interface SantriBadgesGridProps {
   santriId: string;
   targetJuz?: number;
+  /** Jika diisi (halaman publik), tidak perlu query ulang ke Supabase */
+  initialSetoran?: SetoranItem[];
 }
 
 export default function SantriBadgesGrid({
   santriId,
   targetJuz = 30,
+  initialSetoran,
 }: SantriBadgesGridProps) {
-  const [badges, setBadges] = useState<Badge[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [badges, setBadges] = useState<Badge[]>(() =>
+    initialSetoran ? calculateSantriBadges(initialSetoran, targetJuz) : []
+  );
+  const [loading, setLoading] = useState(!initialSetoran);
 
   useEffect(() => {
+    if (initialSetoran) {
+      setBadges(calculateSantriBadges(initialSetoran, targetJuz));
+      setLoading(false);
+      return;
+    }
+
     const loadBadges = async () => {
       setLoading(true);
       try {
@@ -48,7 +59,7 @@ export default function SantriBadgesGrid({
     };
 
     if (santriId) loadBadges();
-  }, [santriId, targetJuz]);
+  }, [santriId, targetJuz, initialSetoran]);
 
   if (loading) {
     return (

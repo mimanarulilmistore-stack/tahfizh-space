@@ -236,7 +236,8 @@ export default function CetakKartuPinPage() {
               /* GRID UTAMA KARTU (PRINT-OPTIMIZED A4 GRID) */
               <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-4 print:gap-3 print:w-full">
                 {printableSantri.map((santri) => {
-                  const portalUrl = `${originUrl}/dashboard/santri?code=${santri.kode_unik}`;
+                  // QR langsung ke halaman santri bersangkutan (bukan daftar/portal cari)
+                  const portalUrl = `${originUrl}/santri/${santri.kode_unik}`;
 
                   return (
                     <div 
@@ -291,7 +292,7 @@ export default function CetakKartuPinPage() {
                       <div className="pt-2 border-t border-slate-800/80 print:border-slate-300 flex items-center justify-between gap-2 bg-slate-900/50 print:bg-slate-50 -mx-4 -mb-4 p-2.5 px-4 rounded-b-xl">
                         <div>
                           <p className="text-[8px] text-slate-400 print:text-slate-600 leading-tight">
-                            Pindai QR Code atau buka portal santri lalu masukkan PIN:
+                            Pindai QR untuk membuka halaman anak Anda saja:
                           </p>
                           <p className="text-xs font-mono font-black text-emerald-400 print:text-emerald-800 tracking-wider">
                             PIN: {santri.kode_unik}

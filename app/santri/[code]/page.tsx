@@ -8,6 +8,26 @@ interface PageProps {
   }>;
 }
 
+type SantriPublic = {
+  id: string;
+  nama_lengkap: string;
+  kode_unik: string;
+  nis: string | null;
+  target_juz: number | null;
+};
+
+type SetoranPublic = {
+  id: string;
+  jenis_setoran: string;
+  nama_surah: string | null;
+  ayat_mulai: number | null;
+  ayat_selesai: number | null;
+  nilai_kelancaran: string | null;
+  nilai_tajwid: string | null;
+  catatan: string | null;
+  created_at: string;
+};
+
 export default async function SantriDetailPage({ params }: PageProps) {
   const { code } = await params;
   const cleanCode = code.trim().toUpperCase();
@@ -32,53 +52,90 @@ export default async function SantriDetailPage({ params }: PageProps) {
 
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-  const { data: santri, error } = await supabase
-    .from("profiles")
-    .select("id, nama_lengkap, kode_unik, nis, target_juz")
-    .eq("kode_unik", cleanCode)
-    .eq("role", "santri")
-    .maybeSingle();
+  // Prefer RPC yang hanya mengembalikan 1 santri by kode (privasi wali)
+  let santri: SantriPublic | null = null;
 
-  if (error || !santri) {
+  const { data: rpcSantri, error: rpcError } = await supabase.rpc(
+    "get_santri_by_kode",
+    { p_kode: cleanCode }
+  );
+
+  if (!rpcError && Array.isArray(rpcSantri) && rpcSantri.length > 0) {
+    santri = rpcSantri[0] as SantriPublic;
+  } else {
+    // Fallback jika RPC belum dijalankan di Supabase
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, nama_lengkap, kode_unik, nis, target_juz")
+      .eq("kode_unik", cleanCode)
+      .eq("role", "santri")
+      .maybeSingle();
+    santri = data;
+  }
+
+  if (!santri) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6 dark:bg-slate-950">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl dark:bg-slate-900 border border-red-100 dark:border-red-900/30">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400">
             <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
           </div>
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">
             Santri Tidak Ditemukan
           </h1>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            QR Code atau kode unik{" "}
+            Kode unik{" "}
             <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
               &quot;{cleanCode}&quot;
             </span>{" "}
-            tidak terdaftar dalam sistem Mutaba&apos;ah.
+            tidak terdaftar. Pastikan PIN di kartu anak Anda sudah benar.
           </p>
           <Link
-            href="/"
+            href="/portal"
             className="mt-6 inline-block w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-700 transition-all"
           >
-            Kembali ke Halaman Utama
+            Coba PIN Lain
           </Link>
         </div>
       </main>
     );
   }
 
-  const { data: setoranList } = await supabase
-    .from("setoran_hafalan")
-    .select(
-      "id, jenis_setoran, nama_surah, ayat_mulai, ayat_selesai, nilai_kelancaran, nilai_tajwid, catatan, created_at"
-    )
-    .eq("santri_id", santri.id)
-    .order("created_at", { ascending: false });
+  let records: SetoranPublic[] = [];
 
-  const records = setoranList || [];
+  const { data: rpcSetoran, error: rpcSetoranError } = await supabase.rpc(
+    "get_setoran_by_kode",
+    { p_kode: cleanCode }
+  );
+
+  if (!rpcSetoranError && Array.isArray(rpcSetoran)) {
+    records = rpcSetoran as SetoranPublic[];
+  } else {
+    const { data: setoranList } = await supabase
+      .from("setoran_hafalan")
+      .select(
+        "id, jenis_setoran, nama_surah, ayat_mulai, ayat_selesai, nilai_kelancaran, nilai_tajwid, catatan, created_at"
+      )
+      .eq("santri_id", santri.id)
+      .order("created_at", { ascending: false });
+    records = (setoranList || []) as SetoranPublic[];
+  }
+
   const totalZiyadah = records.filter((r) => r.jenis_setoran === "ziyadah").length;
+  const totalMurajaah = records.filter((r) => r.jenis_setoran === "murajaah").length;
+
+  const badgeSetoran = records.map((item) => ({
+    id: item.id,
+    jenis_setoran: item.jenis_setoran,
+    nilai_kualitas: item.nilai_kelancaran || item.nilai_tajwid || undefined,
+  }));
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 sm:p-8 dark:bg-slate-950 transition-colors">
@@ -87,13 +144,13 @@ export default async function SantriDetailPage({ params }: PageProps) {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 mb-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Akses Instan QR Code
+              Portal Khusus Wali — Hanya Data Anak Ini
             </div>
             <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 sm:text-3xl">
               {santri.nama_lengkap}
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Kode Unik:{" "}
+              Kode:{" "}
               <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                 {santri.kode_unik}
               </span>
@@ -101,7 +158,7 @@ export default async function SantriDetailPage({ params }: PageProps) {
             </p>
           </div>
 
-          <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/40 text-right sm:text-left">
+          <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/40">
             <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
               Target Hafalan
             </p>
@@ -110,21 +167,25 @@ export default async function SantriDetailPage({ params }: PageProps) {
               <span className="text-sm font-normal">Juz</span>
             </p>
             <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 mt-1">
-              {totalZiyadah} ziyadah tercatat
+              {totalZiyadah} ziyadah · {totalMurajaah} murajaah
             </p>
           </div>
         </header>
 
         <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">
-            Pencapaian & Lencana Santri
+            Pencapaian & Lencana
           </h2>
-          <SantriBadgesGrid santriId={santri.id} targetJuz={santri.target_juz || 30} />
+          <SantriBadgesGrid
+            santriId={santri.id}
+            targetJuz={santri.target_juz || 30}
+            initialSetoran={badgeSetoran}
+          />
         </section>
 
         <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">
-            Riwayat Mutaba&apos;ah Terakhir
+            Riwayat Mutaba&apos;ah
           </h2>
           {records.length > 0 ? (
             <div className="space-y-3">
@@ -167,6 +228,10 @@ export default async function SantriDetailPage({ params }: PageProps) {
             </p>
           )}
         </section>
+
+        <p className="text-center text-xs text-slate-400 pb-4">
+          Halaman ini hanya menampilkan data santri sesuai PIN/QR yang Anda buka.
+        </p>
       </div>
     </main>
   );

@@ -132,7 +132,8 @@ export default function AdminDashboardPage() {
 
   // Helper Auto-Generate Kode Unik (Contoh: SNT-839)
   const generateRandomKode = () => {
-    const randomNum = Math.floor(100 + Math.random() * 900);
+    // 6 digit agar lebih sulit ditebak dari QR/PIN orang lain
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
     return `SNT-${randomNum}`;
   };
 
@@ -529,8 +530,8 @@ export default function AdminDashboardPage() {
                               </button>
 
                               <button
-                                onClick={() => window.open(`/dashboard/santri?code=${santri.kode_unik}`, '_blank')}
-                                title="Buka Portal Santri"
+                                onClick={() => window.open(`/santri/${santri.kode_unik}`, '_blank')}
+                                title="Buka Halaman Santri (tampilan wali)"
                                 className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-all border border-slate-700"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />

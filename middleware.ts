@@ -50,6 +50,7 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute =
     pathname === '/' ||
     pathname === '/login' ||
+    pathname === '/portal' ||
     pathname.startsWith('/santri/')
 
   if (!user && !isPublicRoute) {
