@@ -154,7 +154,7 @@ export default async function SantriDetailPage({ params }: PageProps) {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 mb-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Portal Khusus Wali — Hanya Data Anak Ini
+              Portal Khusus Wali
             </div>
             <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 sm:text-3xl">
               {santri.nama_lengkap}
