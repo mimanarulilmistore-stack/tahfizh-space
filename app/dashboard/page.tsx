@@ -22,7 +22,8 @@ import {
   Crown,
   Award,
   Flame,
-  Star
+  Star,
+  Pencil
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -265,13 +266,20 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Delete Santri Handler
+  // Delete Santri Handler (hapus setoran dulu agar tidak tertinggal)
   const handleDeleteSantri = async (id: string, nama: string) => {
     if (!confirm(`Apakah Anda yakin ingin menghapus data santri "${nama}"? Semua riwayat setoran juga akan terhapus.`)) {
       return;
     }
 
     try {
+      const { error: setoranDeleteError } = await supabase
+        .from('setoran_hafalan')
+        .delete()
+        .eq('santri_id', id);
+
+      if (setoranDeleteError) throw setoranDeleteError;
+
       const { error } = await supabase
         .from('profiles')
         .delete()
@@ -283,7 +291,7 @@ export default function AdminDashboardPage() {
       fetchDashboardData();
     } catch (err: any) {
       console.error('Delete Error:', err);
-      setToastMessage({ type: 'error', text: 'Gagal menghapus data santri.' });
+      setToastMessage({ type: 'error', text: err.message || 'Gagal menghapus data santri.' });
     }
   };
 
@@ -576,6 +584,15 @@ export default function AdminDashboardPage() {
                               >
                                 <PlusCircle className="w-3.5 h-3.5" />
                                 Setor
+                              </button>
+
+                              <button
+                                onClick={() => router.push(`/dashboard/santri/${santri.id}`)}
+                                title="Edit profil & koreksi setoran"
+                                className="px-2.5 py-1.5 bg-sky-950/40 hover:bg-sky-900 border border-sky-800/60 text-sky-300 hover:text-white rounded-lg transition-all flex items-center gap-1 text-[11px] font-semibold"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                Edit
                               </button>
 
                               <button
