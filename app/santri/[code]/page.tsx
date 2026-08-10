@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import SantriBadgesGrid from "@/components/SantriBadgesGrid";
 import JuzMap from "@/components/JuzMap";
+import RingkasanBulananCard from "@/components/RingkasanBulanan";
 import PortalExitButton from "@/components/PortalExitButton";
 import Link from "next/link";
 import { computeJuzProgress, getSantriLevel } from "@/src/utils/badgeCalculator";
@@ -150,9 +151,11 @@ export default async function SantriDetailPage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-slate-50 p-4 sm:p-8 dark:bg-slate-950 transition-colors">
       <div className="mx-auto max-w-4xl space-y-6">
-        <PortalExitButton />
+        <div className="print:hidden">
+          <PortalExitButton />
+        </div>
 
-        <header className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm dark:border-emerald-900/30 dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <header className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm dark:border-emerald-900/30 dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 mb-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -185,81 +188,103 @@ export default async function SantriDetailPage({ params }: PageProps) {
           </div>
         </header>
 
-        <JuzMap
-          completedJuz={progress.juzSelesaiList}
-          startedJuz={progress.juzDimulaiList}
-          targetJuz={santri.target_juz || 30}
+        <RingkasanBulananCard
+          santriNama={santri.nama_lengkap}
+          kodeUnik={santri.kode_unik}
+          tingkatanLabel={getTingkatanLabel(santri.tingkatan)}
+          records={records}
           variant="light"
         />
-        <p className="text-center text-xs text-slate-400 -mt-3">
-          Peta ini hanya tampilan. Penandaan juz selesai dilakukan oleh ustadz di dashboard.
-        </p>
 
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">
-            Pencapaian & Lencana
-          </h2>
-          <SantriBadgesGrid
-            santriId={santri.id}
+        <div className="space-y-6 print:hidden">
+          <JuzMap
+            completedJuz={progress.juzSelesaiList}
+            startedJuz={progress.juzDimulaiList}
             targetJuz={santri.target_juz || 30}
-            initialSetoran={badgeSetoran}
+            variant="light"
           />
-        </section>
+          <p className="text-center text-xs text-slate-400 -mt-3">
+            Peta ini hanya tampilan. Penandaan juz selesai dilakukan oleh ustadz di dashboard.
+          </p>
 
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">
-            Riwayat Mutaba&apos;ah
-          </h2>
-          {records.length > 0 ? (
-            <div className="space-y-3">
-              {records.map((record) => (
-                <div
-                  key={record.id}
-                  className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40 gap-3"
-                >
-                  <div>
-                    <p className="font-semibold text-slate-800 dark:text-slate-200">
-                      Surah {record.nama_surah || "N/A"} (Ayat {record.ayat_mulai} -{" "}
-                      {record.ayat_selesai})
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {new Date(record.created_at).toLocaleDateString("id-ID", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </p>
-                    {record.catatan && (
-                      <p className="mt-1 text-xs text-slate-500 italic">{record.catatan}</p>
-                    )}
+          <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">
+              Pencapaian & Lencana
+            </h2>
+            <SantriBadgesGrid
+              santriId={santri.id}
+              targetJuz={santri.target_juz || 30}
+              initialSetoran={badgeSetoran}
+            />
+          </section>
+
+          <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">
+              Riwayat Mutaba&apos;ah
+            </h2>
+            {records.length > 0 ? (
+              <div className="space-y-3">
+                {records.map((record) => (
+                  <div
+                    key={record.id}
+                    className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40 gap-3"
+                  >
+                    <div>
+                      <p className="font-semibold text-slate-800 dark:text-slate-200">
+                        Surah {record.nama_surah || "N/A"} (Ayat {record.ayat_mulai} -{" "}
+                        {record.ayat_selesai})
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {new Date(record.created_at).toLocaleDateString("id-ID", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </p>
+                      {record.catatan && (
+                        <p className="mt-1 text-xs text-slate-500 italic">{record.catatan}</p>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 uppercase">
+                        {record.jenis_setoran}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        Kelancaran: {record.nilai_kelancaran || "-"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 uppercase">
-                      {record.jenis_setoran}
-                    </span>
-                    <span className="text-[10px] text-slate-500">
-                      Kelancaran: {record.nilai_kelancaran || "-"}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500 dark:text-slate-400 italic">
-              Belum ada catatan mutaba&apos;ah yang terekam.
-            </p>
-          )}
-        </section>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400 italic">
+                Belum ada catatan mutaba&apos;ah yang terekam.
+              </p>
+            )}
+          </section>
 
-        <p className="text-center text-xs text-slate-400 pb-4">
-          Halaman ini hanya menampilkan data santri sesuai PIN/QR yang Anda buka.
-        </p>
+          <p className="text-center text-xs text-slate-400 pb-4">
+            Halaman ini hanya menampilkan data santri sesuai PIN/QR yang Anda buka.
+          </p>
 
-        <div className="pb-8 flex justify-center">
-          <PortalExitButton />
+          <div className="pb-8 flex justify-center">
+            <PortalExitButton />
+          </div>
         </div>
       </div>
+
+      <style>{`
+        @media print {
+          @page { size: A4 portrait; margin: 12mm; }
+          body {
+            background: #fff !important;
+            color: #000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}</style>
     </main>
   );
 }

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
 import JuzMap from '@/components/JuzMap';
+import RingkasanBulananCard from '@/components/RingkasanBulanan';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import { computeJuzProgress } from '@/src/utils/badgeCalculator';
 import {
@@ -395,12 +396,14 @@ export default function KelolaSantriPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-      <HeaderAdmin />
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans print:bg-white print:text-black">
+      <div className="print:hidden">
+        <HeaderAdmin />
+      </div>
 
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-5xl mx-auto space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-5 print:hidden">
             <div>
               <button
                 onClick={() => router.push('/dashboard')}
@@ -438,7 +441,7 @@ export default function KelolaSantriPage() {
           {/* EDIT PROFIL */}
           <form
             onSubmit={handleSaveProfile}
-            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4"
+            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 print:hidden"
           >
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
               <User className="w-4 h-4 text-emerald-400" />
@@ -521,6 +524,15 @@ export default function KelolaSantriPage() {
             </div>
           </form>
 
+          <RingkasanBulananCard
+            santriNama={namaLengkap || 'Santri'}
+            kodeUnik={kodeUnik}
+            tingkatanLabel={getTingkatanLabel(tingkatan)}
+            records={setoranList}
+            variant="dark"
+          />
+
+          <div className="print:hidden space-y-6">
           <JuzMap
             completedJuz={juzProgress.juzSelesaiList}
             startedJuz={juzProgress.juzDimulaiList}
@@ -637,6 +649,7 @@ export default function KelolaSantriPage() {
                 </table>
               </div>
             )}
+          </div>
           </div>
         </div>
       </div>
