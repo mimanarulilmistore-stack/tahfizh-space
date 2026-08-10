@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
 import { getBrowserSupabase } from '@/src/lib/supabase';
@@ -12,6 +12,11 @@ import {
   getTingkatanLabel,
   normalizeTingkatan,
 } from '@/src/utils/tingkatan';
+import {
+  detectSantriPerluPerhatian,
+  KRITERIA_PERHATIAN_TEXT,
+  type ItemPerhatian,
+} from '@/src/utils/perhatianSantri';
 import { 
   Users, 
   BookOpen, 
@@ -30,7 +35,8 @@ import {
   Award,
   Flame,
   Star,
-  Pencil
+  Pencil,
+  AlertTriangle
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -57,6 +63,7 @@ export default function AdminDashboardPage() {
 
   // State Data Main & Analytics
   const [santriList, setSantriList] = useState<SantriProfile[]>([]);
+  const [perhatianList, setPerhatianList] = useState<ItemPerhatian[]>([]);
   const [totalSetoranGlobal, setTotalSetoranGlobal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [tingkatanFilter, setTingkatanFilter] = useState<'all' | TingkatanKelas>('all');
@@ -117,10 +124,12 @@ export default function AdminDashboardPage() {
       if (setoranError) console.error('Error counting setoran:', setoranError);
       setTotalSetoranGlobal(setoranCount || 0);
 
-      // Fetch setoran untuk agregasi leaderboard & level (berdasarkan juz selesai)
+      // Fetch setoran untuk agregasi leaderboard, level, & perhatian
       const { data: setoranData } = await supabase
         .from('setoran_hafalan')
-        .select('id, santri_id, jenis_setoran, juz, juz_selesai, nilai_kelancaran, nilai_tajwid');
+        .select(
+          'id, santri_id, jenis_setoran, juz, juz_selesai, nilai_kelancaran, nilai_tajwid, tanggal_setoran, created_at'
+        );
 
       const bySantri: Record<string, any[]> = {};
       if (setoranData) {
@@ -141,6 +150,7 @@ export default function AdminDashboardPage() {
       });
 
       setSantriList(formattedSantri);
+      setPerhatianList(detectSantriPerluPerhatian(formattedSantri, bySantri));
     } catch (err: any) {
       console.error('Fetch Dashboard Error:', err);
       setToastMessage({ type: 'error', text: 'Gagal memuat data dashboard.' });
@@ -348,6 +358,14 @@ export default function AdminDashboardPage() {
       })
       .slice(0, 3);
 
+  const filteredPerhatian = useMemo(() => perhatianList, [perhatianList]);
+
+  const severityClass = (severity: 'tinggi' | 'sedang' | 'rendah') => {
+    if (severity === 'tinggi') return 'bg-rose-950 text-rose-300 border-rose-800';
+    if (severity === 'sedang') return 'bg-amber-950 text-amber-300 border-amber-800';
+    return 'bg-slate-800 text-slate-300 border-slate-700';
+  };
+
   if (loadingSession) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans">
@@ -442,14 +460,22 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              <div className="sm:col-span-2 bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 rounded-2xl p-6 flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
-                    <Flame className="w-4 h-4 fill-amber-400" />
-                    Pemberitahuan Sistem
+              <div className="sm:col-span-2 bg-gradient-to-r from-slate-900 via-slate-900 to-rose-950/30 border border-slate-800 rounded-2xl p-6 flex items-center justify-between gap-4">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2 text-rose-300 text-xs font-bold uppercase tracking-wider">
+                    <AlertTriangle className="w-4 h-4" />
+                    Pantauan Operasional
                   </div>
-                  <h3 className="text-base font-bold text-white">Distribusi PIN Wali Santri</h3>
-                  <p className="text-xs text-slate-400">Gunakan Kode Unik di tabel bawah untuk diberikan kepada Wali Santri agar bisa memantau progres tanpa login.</p>
+                  <h3 className="text-base font-bold text-white">Santri Perlu Perhatian</h3>
+                  <p className="text-xs text-slate-400">
+                    {filteredPerhatian.length === 0
+                      ? 'Tidak ada santri yang masuk kriteria saat ini.'
+                      : `${filteredPerhatian.length} santri perlu ditindaklanjuti (lihat daftar di bawah).`}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-3xl font-extrabold text-rose-300">{filteredPerhatian.length}</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider">santri</p>
                 </div>
               </div>
             </div>
@@ -537,6 +563,137 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
+          </div>
+
+          {/* SANTRI PERLU PERHATIAN */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-rose-400" />
+                  Santri Perlu Perhatian
+                  <span className="text-sm font-semibold text-rose-300/90">
+                    ({filteredPerhatian.length})
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Kriteria: {KRITERIA_PERHATIAN_TEXT.join(' · ')}.
+                </p>
+              </div>
+            </div>
+
+            {loadingData ? (
+              <div className="text-center py-8 text-slate-500 text-sm">
+                <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-rose-400" />
+                Memuat pantauan...
+              </div>
+            ) : filteredPerhatian.length === 0 ? (
+              <div className="text-center py-8 border border-dashed border-slate-800 rounded-xl">
+                <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-white">Semua aman</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Tidak ada santri yang masuk kriteria perhatian.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800 tracking-wider">
+                    <tr>
+                      <th className="px-4 py-3">Santri</th>
+                      <th className="px-4 py-3">Tingkatan</th>
+                      <th className="px-4 py-3">Alasan</th>
+                      <th className="px-4 py-3">Aktivitas terakhir</th>
+                      <th className="px-4 py-3 text-right">Aksi cepat</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {filteredPerhatian.map((item) => (
+                      <tr key={item.santri.id} className="hover:bg-slate-950/50">
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-white text-sm">
+                            {item.santri.nama_lengkap}
+                          </p>
+                          <p className="text-[11px] text-slate-500 font-mono">
+                            {item.santri.kode_unik}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex px-2 py-0.5 rounded border text-[10px] font-bold ${getTingkatanBadgeClass(
+                              item.santri.tingkatan
+                            )}`}
+                          >
+                            {getTingkatanLabel(item.santri.tingkatan)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            {item.reasons.map((reason) => (
+                              <span
+                                key={reason.id}
+                                title={reason.detail}
+                                className={`inline-flex px-2 py-0.5 rounded border text-[10px] font-bold ${severityClass(
+                                  reason.severity
+                                )}`}
+                              >
+                                {reason.label}
+                              </span>
+                            ))}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            {item.reasons.map((r) => r.detail).join(' · ')}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {item.lastSetoranAt ? (
+                            <>
+                              <p className="font-medium text-slate-200">
+                                {new Date(item.lastSetoranAt).toLocaleDateString('id-ID')}
+                              </p>
+                              <p className="text-[11px] text-slate-500">
+                                {item.daysSinceLastSetoran != null
+                                  ? `${item.daysSinceLastSetoran} hari lalu`
+                                  : '-'}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-slate-500 italic">Belum ada setoran</p>
+                          )}
+                          <p className="text-[10px] text-slate-600 mt-0.5">
+                            Z:{item.totalZiyadah} · M:{item.totalMurajaah}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                router.push(`/dashboard/input?santri_id=${item.santri.id}`)
+                              }
+                              className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/40 text-emerald-300 hover:text-white rounded-lg transition-all flex items-center gap-1 text-[11px] font-semibold"
+                            >
+                              <PlusCircle className="w-3.5 h-3.5" />
+                              Setor
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                router.push(`/dashboard/santri/${item.santri.id}`)
+                              }
+                              className="px-2.5 py-1.5 bg-sky-950/40 hover:bg-sky-900 border border-sky-800/60 text-sky-300 hover:text-white rounded-lg transition-all flex items-center gap-1 text-[11px] font-semibold"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              Edit
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* TABEL MANAJEMEN SANTRI */}
