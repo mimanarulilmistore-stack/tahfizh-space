@@ -13,6 +13,10 @@ import {
   normalizeTingkatan,
 } from '@/src/utils/tingkatan';
 import {
+  exportRaporIndividualExcel,
+  exportRekapKelasExcel,
+} from '@/src/utils/exportExcel';
+import {
   FileText,
   Printer,
   ArrowLeft,
@@ -22,6 +26,7 @@ import {
   BookOpen,
   Filter,
   AlertCircle,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -250,6 +255,67 @@ export default function LaporanDashboardPage() {
     );
   }, [rekapRows]);
 
+  const handleExportExcel = () => {
+    try {
+      if (reportType === 'individual') {
+        if (!selectedSantri) {
+          setErrorMsg('Pilih santri terlebih dahulu sebelum export.');
+          return;
+        }
+        const rowsForExport =
+          jenisFilter === 'ziyadah'
+            ? ziyadahRows
+            : jenisFilter === 'murajaah'
+              ? murajaahRows
+              : setoranData;
+
+        exportRaporIndividualExcel({
+          santri: selectedSantri,
+          setoran: rowsForExport,
+          ringkasan: {
+            totalSetoran: individualProgress.totalSetoran,
+            ziyadah: individualProgress.totalZiyadah,
+            murajaah: individualProgress.totalMurajaah,
+            juzSelesai: individualProgress.juzSelesaiCount,
+            level: individualLevel.label,
+          },
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+          monthKey: monthKey || undefined,
+        });
+        return;
+      }
+
+      const santriNameById = Object.fromEntries(
+        filteredSantriList.map((s) => [s.id, s.nama_lengkap])
+      );
+      const allowedIds = new Set(filteredSantriList.map((s) => s.id));
+      const detailSetoran = setoranData.filter((s) => allowedIds.has(s.santri_id));
+
+      exportRekapKelasExcel({
+        rekap: rekapRows.map((row) => ({
+          santri: row.santri,
+          juzSelesai: row.progress.juzSelesaiCount,
+          level: row.level.label,
+          ziyadah: row.ziyadah,
+          murajaah: row.murajaah,
+          total: row.count,
+        })),
+        detailSetoran,
+        santriNameById,
+        totals: rekapTotals,
+        tingkatanFilterLabel:
+          tingkatanFilter === 'all' ? 'Semua' : getTingkatanLabel(tingkatanFilter),
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        monthKey: monthKey || undefined,
+      });
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || 'Gagal mengekspor Excel.');
+    }
+  };
+
   const renderSetoranTable = (rows: SetoranRecord[], emptyText: string) => {
     if (rows.length === 0) {
       return (
@@ -338,18 +404,28 @@ export default function LaporanDashboardPage() {
                   Laporan & Rapor Progress Santri
                 </h1>
                 <p className="text-xs text-slate-400 mt-1">
-                  Cetak rapor individual atau rekapitulasi kelas berdasarkan data setoran aktual.
+                  Cetak PDF atau export Excel untuk rapor individual / rekap kelas sesuai filter aktif.
                 </p>
               </div>
 
-              <button
-                onClick={handlePrint}
-                disabled={loadingSetoran}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-950/50 flex items-center gap-2 text-sm"
-              >
-                <Printer className="w-4 h-4" />
-                Cetak Laporan (PDF)
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleExportExcel}
+                  disabled={loadingSetoran}
+                  className="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:bg-slate-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-sky-950/40 flex items-center gap-2 text-sm"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Export Excel
+                </button>
+                <button
+                  onClick={handlePrint}
+                  disabled={loadingSetoran}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-950/50 flex items-center gap-2 text-sm"
+                >
+                  <Printer className="w-4 h-4" />
+                  Cetak Laporan (PDF)
+                </button>
+              </div>
             </div>
 
             {errorMsg && (
