@@ -77,8 +77,35 @@ export default function LaporanDashboardPage() {
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [monthKey, setMonthKey] = useState('');
   const [jenisFilter, setJenisFilter] = useState<'all' | 'ziyadah' | 'murajaah'>('all');
   const [tingkatanFilter, setTingkatanFilter] = useState<'all' | TingkatanKelas>('all');
+
+  const dateInputClass =
+    'px-3 py-1.5 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/60 min-w-[10rem] [color-scheme:light]';
+
+  const applyMonthRange = (ym: string) => {
+    setMonthKey(ym);
+    if (!ym) return;
+    const [yRaw, mRaw] = ym.split('-');
+    const y = Number(yRaw);
+    const m = Number(mRaw);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return;
+    const lastDay = new Date(y, m, 0).getDate();
+    const mm = String(m).padStart(2, '0');
+    setStartDate(`${y}-${mm}-01`);
+    setEndDate(`${y}-${mm}-${String(lastDay).padStart(2, '0')}`);
+  };
+
+  const onStartDateChange = (value: string) => {
+    setStartDate(value);
+    setMonthKey('');
+  };
+
+  const onEndDateChange = (value: string) => {
+    setEndDate(value);
+    setMonthKey('');
+  };
 
   useEffect(() => {
     const initPage = async () => {
@@ -418,12 +445,23 @@ export default function LaporanDashboardPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                <span className="text-slate-500">Bulan:</span>
+                <input
+                  type="month"
+                  value={monthKey}
+                  onChange={(e) => applyMonthRange(e.target.value)}
+                  className={dateInputClass}
+                  title="Pilih bulan — otomatis mengisi tanggal Dari & Sampai"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
                 <span className="text-slate-500">Dari:</span>
                 <input
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  onChange={(e) => onStartDateChange(e.target.value)}
+                  className={dateInputClass}
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -431,15 +469,16 @@ export default function LaporanDashboardPage() {
                 <input
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  onChange={(e) => onEndDateChange(e.target.value)}
+                  className={dateInputClass}
                 />
               </div>
-              {(startDate || endDate || jenisFilter !== 'all' || tingkatanFilter !== 'all') && (
+              {(startDate || endDate || monthKey || jenisFilter !== 'all' || tingkatanFilter !== 'all') && (
                 <button
                   onClick={() => {
                     setStartDate('');
                     setEndDate('');
+                    setMonthKey('');
                     setJenisFilter('all');
                     setTingkatanFilter('all');
                   }}
