@@ -4,6 +4,7 @@ import JuzMap from "@/components/JuzMap";
 import PortalExitButton from "@/components/PortalExitButton";
 import Link from "next/link";
 import { computeJuzProgress, getSantriLevel } from "@/src/utils/badgeCalculator";
+import { getTingkatanLabel } from "@/src/utils/tingkatan";
 
 interface PageProps {
   params: Promise<{
@@ -17,6 +18,7 @@ type SantriPublic = {
   kode_unik: string;
   nis: string | null;
   target_juz: number | null;
+  tingkatan?: string | null;
 };
 
 type SetoranPublic = {
@@ -71,7 +73,7 @@ export default async function SantriDetailPage({ params }: PageProps) {
     // Fallback jika RPC belum dijalankan di Supabase
     const { data } = await supabase
       .from("profiles")
-      .select("id, nama_lengkap, kode_unik, nis, target_juz")
+      .select("id, nama_lengkap, kode_unik, nis, target_juz, tingkatan")
       .eq("kode_unik", cleanCode)
       .eq("role", "santri")
       .maybeSingle();
@@ -165,6 +167,7 @@ export default async function SantriDetailPage({ params }: PageProps) {
                 {santri.kode_unik}
               </span>
               {santri.nis && ` • NIS: ${santri.nis}`}
+              {` • Tingkatan: ${getTingkatanLabel(santri.tingkatan)}`}
             </p>
           </div>
 

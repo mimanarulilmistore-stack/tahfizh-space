@@ -7,6 +7,12 @@ import JuzMap from '@/components/JuzMap';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import { computeJuzProgress, getSantriLevel } from '@/src/utils/badgeCalculator';
 import {
+  TINGKATAN_OPTIONS,
+  type TingkatanKelas,
+  getTingkatanLabel,
+  normalizeTingkatan,
+} from '@/src/utils/tingkatan';
+import {
   FileText,
   Printer,
   ArrowLeft,
@@ -26,6 +32,7 @@ interface SantriProfile {
   kode_unik: string;
   nis: string | null;
   target_juz: number;
+  tingkatan?: string | null;
 }
 
 interface SetoranRecord {
@@ -71,6 +78,7 @@ export default function LaporanDashboardPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [jenisFilter, setJenisFilter] = useState<'all' | 'ziyadah' | 'murajaah'>('all');
+  const [tingkatanFilter, setTingkatanFilter] = useState<'all' | TingkatanKelas>('all');
 
   useEffect(() => {
     const initPage = async () => {
@@ -85,7 +93,7 @@ export default function LaporanDashboardPage() {
 
         const { data: profiles, error } = await supabase
           .from('profiles')
-          .select('id, nama_lengkap, kode_unik, nis, target_juz')
+          .select('id, nama_lengkap, kode_unik, nis, target_juz, tingkatan')
           .eq('role', 'santri')
           .order('nama_lengkap', { ascending: true });
 
@@ -174,8 +182,13 @@ export default function LaporanDashboardPage() {
   const showZiyadahSection = jenisFilter === 'all' || jenisFilter === 'ziyadah';
   const showMurajaahSection = jenisFilter === 'all' || jenisFilter === 'murajaah';
 
+  const filteredSantriList = useMemo(() => {
+    if (tingkatanFilter === 'all') return santriList;
+    return santriList.filter((s) => normalizeTingkatan(s.tingkatan) === tingkatanFilter);
+  }, [santriList, tingkatanFilter]);
+
   const rekapRows = useMemo(() => {
-    return santriList.map((santri) => {
+    return filteredSantriList.map((santri) => {
       const rows = setoranData.filter((s) => s.santri_id === santri.id);
       const progress = computeJuzProgress(rows);
       const level = getSantriLevel(progress.juzSelesaiCount);
@@ -188,7 +201,14 @@ export default function LaporanDashboardPage() {
         murajaah: progress.totalMurajaah,
       };
     });
-  }, [santriList, setoranData]);
+  }, [filteredSantriList, setoranData]);
+
+  useEffect(() => {
+    if (filteredSantriList.length === 0) return;
+    if (!filteredSantriList.some((s) => s.id === selectedSantriId)) {
+      setSelectedSantriId(filteredSantriList[0].id);
+    }
+  }, [filteredSantriList, selectedSantriId]);
 
   const rekapTotals = useMemo(() => {
     return rekapRows.reduce(
@@ -348,10 +368,10 @@ export default function LaporanDashboardPage() {
                     onChange={(e) => setSelectedSantriId(e.target.value)}
                     className="w-full sm:w-64 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                   >
-                    {santriList.length === 0 && <option value="">Belum ada santri</option>}
-                    {santriList.map((s) => (
+                    {filteredSantriList.length === 0 && <option value="">Belum ada santri</option>}
+                    {filteredSantriList.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.nama_lengkap} ({s.kode_unik})
+                        {s.nama_lengkap} · {getTingkatanLabel(s.tingkatan)} ({s.kode_unik})
                       </option>
                     ))}
                   </select>
@@ -380,6 +400,24 @@ export default function LaporanDashboardPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                <span className="text-slate-500">Tingkatan:</span>
+                <select
+                  value={tingkatanFilter}
+                  onChange={(e) =>
+                    setTingkatanFilter(e.target.value as 'all' | TingkatanKelas)
+                  }
+                  className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="all">Semua</option>
+                  {TINGKATAN_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
                 <span className="text-slate-500">Dari:</span>
                 <input
                   type="date"
@@ -397,12 +435,13 @@ export default function LaporanDashboardPage() {
                   className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
-              {(startDate || endDate || jenisFilter !== 'all') && (
+              {(startDate || endDate || jenisFilter !== 'all' || tingkatanFilter !== 'all') && (
                 <button
                   onClick={() => {
                     setStartDate('');
                     setEndDate('');
                     setJenisFilter('all');
+                    setTingkatanFilter('all');
                   }}
                   className="text-emerald-400 hover:underline font-medium"
                 >
@@ -449,7 +488,7 @@ export default function LaporanDashboardPage() {
             {/* INDIVIDUAL */}
             {reportType === 'individual' && selectedSantri && (
               <div className="space-y-6">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
                   <div>
                     <p className="text-slate-500 font-medium">Nama Santri</p>
                     <p className="font-bold text-slate-900 text-sm mt-0.5">
@@ -471,6 +510,12 @@ export default function LaporanDashboardPage() {
                   <div>
                     <p className="text-slate-500 font-medium">Target Capaian</p>
                     <p className="font-bold text-slate-900 mt-0.5">{selectedSantri.target_juz} Juz</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 font-medium">Tingkatan</p>
+                    <p className="font-bold text-slate-900 mt-0.5">
+                      {getTingkatanLabel(selectedSantri.tingkatan)}
+                    </p>
                   </div>
                 </div>
 
@@ -592,6 +637,7 @@ export default function LaporanDashboardPage() {
                       <tr className="bg-slate-100 border-y border-slate-300 text-slate-700 font-bold">
                         <th className="py-2.5 px-3">No</th>
                         <th className="py-2.5 px-3">Nama Santri</th>
+                        <th className="py-2.5 px-3">Tingkatan</th>
                         <th className="py-2.5 px-3">NIS / Kode</th>
                         <th className="py-2.5 px-3 text-center">Target</th>
                         <th className="py-2.5 px-3 text-center">Juz Selesai</th>
@@ -608,6 +654,9 @@ export default function LaporanDashboardPage() {
                           <td className="py-2.5 px-3 font-mono text-slate-500">{idx + 1}</td>
                           <td className="py-2.5 px-3 font-bold text-slate-900">
                             {santri.nama_lengkap}
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-700">
+                            {getTingkatanLabel(santri.tingkatan)}
                           </td>
                           <td className="py-2.5 px-3 font-mono text-slate-600">
                             {santri.nis || '-'} ({santri.kode_unik})

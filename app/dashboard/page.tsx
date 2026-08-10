@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import { computeJuzProgress, getSantriLevel } from '@/src/utils/badgeCalculator';
+import {
+  TINGKATAN_OPTIONS,
+  type TingkatanKelas,
+  getTingkatanBadgeClass,
+  getTingkatanLabel,
+  normalizeTingkatan,
+} from '@/src/utils/tingkatan';
 import { 
   Users, 
   BookOpen, 
@@ -34,6 +41,7 @@ interface SantriProfile {
   kode_unik: string;
   nis: string | null;
   target_juz: number;
+  tingkatan?: string | null;
   created_at: string;
   total_setoran?: number;
   juz_selesai_count?: number;
@@ -51,12 +59,14 @@ export default function AdminDashboardPage() {
   const [santriList, setSantriList] = useState<SantriProfile[]>([]);
   const [totalSetoranGlobal, setTotalSetoranGlobal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [tingkatanFilter, setTingkatanFilter] = useState<'all' | TingkatanKelas>('all');
 
   // State Modal Tambah Santri
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [namaLengkap, setNamaLengkap] = useState('');
   const [nis, setNis] = useState('');
   const [targetJuz, setTargetJuz] = useState<number>(30);
+  const [tingkatan, setTingkatan] = useState<TingkatanKelas>('dasar');
   const [generatedKodeUnik, setGeneratedKodeUnik] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -183,6 +193,7 @@ export default function AdminDashboardPage() {
     setNamaLengkap('');
     setNis('');
     setTargetJuz(30);
+    setTingkatan('dasar');
     setModalError(null);
     setGeneratedKodeUnik(await generateUniqueKode());
     setIsModalOpen(true);
@@ -216,6 +227,7 @@ export default function AdminDashboardPage() {
           nis: nis.trim() ? nis.trim() : null,
           kode_unik: kode,
           target_juz: Number(targetJuz) || 30,
+          tingkatan,
           role: 'santri',
         };
 
@@ -314,21 +326,27 @@ export default function AdminDashboardPage() {
   };
 
   // Filter Santri
-  const filteredSantri = santriList.filter((s) => 
-    s.nama_lengkap.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.kode_unik.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (s.nis && s.nis.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredSantri = santriList.filter((s) => {
+    const q = searchQuery.toLowerCase();
+    const matchSearch =
+      s.nama_lengkap.toLowerCase().includes(q) ||
+      s.kode_unik.toLowerCase().includes(q) ||
+      (s.nis && s.nis.toLowerCase().includes(q));
+    if (!matchSearch) return false;
+    if (tingkatanFilter === 'all') return true;
+    return normalizeTingkatan(s.tingkatan) === tingkatanFilter;
+  });
 
-  // Top 3 berdasarkan juz selesai (lalu total setoran sebagai tie-break)
-  const topSantri = [...santriList]
-    .filter((s) => (s.juz_selesai_count || 0) > 0 || (s.total_setoran || 0) > 0)
-    .sort((a, b) => {
-      const juzDiff = (b.juz_selesai_count || 0) - (a.juz_selesai_count || 0);
-      if (juzDiff !== 0) return juzDiff;
-      return (b.total_setoran || 0) - (a.total_setoran || 0);
-    })
-    .slice(0, 3);
+  const getTopByTingkatan = (tingkat: TingkatanKelas) =>
+    [...santriList]
+      .filter((s) => normalizeTingkatan(s.tingkatan) === tingkat)
+      .filter((s) => (s.juz_selesai_count || 0) > 0 || (s.total_setoran || 0) > 0)
+      .sort((a, b) => {
+        const juzDiff = (b.juz_selesai_count || 0) - (a.juz_selesai_count || 0);
+        if (juzDiff !== 0) return juzDiff;
+        return (b.total_setoran || 0) - (a.total_setoran || 0);
+      })
+      .slice(0, 3);
 
   if (loadingSession) {
     return (
@@ -436,51 +454,86 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* GAMIFIKASI LEADERBOARD */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-amber-400" />
-                    Santri Teraktif (Top Juz Selesai)
-                  </h3>
-                  <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-mono">
-                    Leaderboard
-                  </span>
-                </div>
+            {/* GAMIFIKASI LEADERBOARD PER TINGKATAN */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-amber-400" />
+                  Leaderboard per Tingkatan
+                </h3>
+                <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-mono">
+                  Top 3
+                </span>
+              </div>
 
-                {topSantri.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-4 text-center">Belum ada data setoran.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {topSantri.map((s, idx) => {
-                      const levelBadge = getSantriBadge(s.juz_selesai_count || 0);
-                      const LevelIcon = levelBadge.icon;
-                      return (
-                      <div key={s.id} className="flex items-center justify-between bg-slate-950 border border-slate-800/80 p-3 rounded-xl">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                            idx === 0 ? 'bg-amber-500 text-slate-950' : idx === 1 ? 'bg-slate-300 text-slate-950' : 'bg-amber-800 text-white'
-                          }`}>
-                            {idx + 1}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-white leading-tight truncate">{s.nama_lengkap}</p>
-                            <span className={`mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold ${levelBadge.color}`}>
-                              <LevelIcon className="w-2.5 h-2.5" />
-                              {levelBadge.label}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0 pl-2">
-                          <span className="text-xs font-extrabold text-emerald-400">{s.juz_selesai_count || 0}</span>
-                          <span className="text-[10px] text-slate-500 block">Juz selesai</span>
-                        </div>
+              <div className="space-y-4 flex-1">
+                {TINGKATAN_OPTIONS.map((opt) => {
+                  const tops = getTopByTingkatan(opt.value);
+                  return (
+                    <div key={opt.value} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded border text-[10px] font-bold ${getTingkatanBadgeClass(
+                            opt.value
+                          )}`}
+                        >
+                          {opt.label}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {
+                            santriList.filter(
+                              (s) => normalizeTingkatan(s.tingkatan) === opt.value
+                            ).length
+                          }{' '}
+                          santri
+                        </span>
                       </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      {tops.length === 0 ? (
+                        <p className="text-[11px] text-slate-500 py-1.5 px-2 rounded-lg bg-slate-950 border border-slate-800/80">
+                          Belum ada setoran di tingkatan ini.
+                        </p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {tops.map((s, idx) => {
+                            const levelBadge = getSantriBadge(s.juz_selesai_count || 0);
+                            return (
+                              <div
+                                key={s.id}
+                                className="flex items-center justify-between bg-slate-950 border border-slate-800/80 px-2.5 py-2 rounded-lg"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div
+                                    className={`w-5 h-5 rounded flex items-center justify-center font-bold text-[10px] shrink-0 ${
+                                      idx === 0
+                                        ? 'bg-amber-500 text-slate-950'
+                                        : idx === 1
+                                          ? 'bg-slate-300 text-slate-950'
+                                          : 'bg-amber-800 text-white'
+                                    }`}
+                                  >
+                                    {idx + 1}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-[11px] font-bold text-white truncate">
+                                      {s.nama_lengkap}
+                                    </p>
+                                    <p className="text-[9px] text-slate-500">{levelBadge.label}</p>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0 pl-2">
+                                  <span className="text-[11px] font-extrabold text-emerald-400">
+                                    {s.juz_selesai_count || 0}
+                                  </span>
+                                  <span className="text-[9px] text-slate-500 block">juz</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -495,15 +548,31 @@ export default function AdminDashboardPage() {
                 Daftar Santri Terdaftar ({filteredSantri.length})
               </h2>
 
-              <div className="relative w-full sm:w-72">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari Nama / NIS / Kode Unik..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                />
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <select
+                  value={tingkatanFilter}
+                  onChange={(e) =>
+                    setTingkatanFilter(e.target.value as 'all' | TingkatanKelas)
+                  }
+                  className="px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                >
+                  <option value="all">Semua Tingkatan</option>
+                  {TINGKATAN_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari Nama / NIS / Kode Unik..."
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  />
+                </div>
               </div>
             </div>
 
@@ -520,6 +589,7 @@ export default function AdminDashboardPage() {
                 <thead className="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800 tracking-wider">
                   <tr>
                     <th className="px-4 py-3.5">Santri</th>
+                    <th className="px-4 py-3.5">Tingkatan</th>
                     <th className="px-4 py-3.5">Kode Unik (PIN)</th>
                     <th className="px-4 py-3.5">Target</th>
                     <th className="px-4 py-3.5">Level Badge</th>
@@ -530,14 +600,14 @@ export default function AdminDashboardPage() {
                 <tbody className="divide-y divide-slate-800/60 font-medium">
                   {loadingData ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-8 text-slate-500">
+                      <td colSpan={7} className="text-center py-8 text-slate-500">
                         <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-emerald-400" />
                         Memuat data santri...
                       </td>
                     </tr>
                   ) : filteredSantri.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-8 text-slate-500">
+                      <td colSpan={7} className="text-center py-8 text-slate-500">
                         Tidak ada data santri yang cocok dengan pencarian.
                       </td>
                     </tr>
@@ -551,6 +621,16 @@ export default function AdminDashboardPage() {
                           <td className="px-4 py-3.5">
                             <p className="font-bold text-white text-sm">{santri.nama_lengkap}</p>
                             <p className="text-[11px] text-slate-500 font-mono">NIS: {santri.nis || '-'}</p>
+                          </td>
+
+                          <td className="px-4 py-3.5">
+                            <span
+                              className={`inline-flex px-2 py-0.5 rounded border text-[10px] font-bold ${getTingkatanBadgeClass(
+                                santri.tingkatan
+                              )}`}
+                            >
+                              {getTingkatanLabel(santri.tingkatan)}
+                            </span>
                           </td>
 
                           <td className="px-4 py-3.5">
@@ -667,6 +747,27 @@ export default function AdminDashboardPage() {
                       placeholder="Contoh: 2026001"
                       className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                     />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">
+                      Tingkatan Kelas <span className="text-rose-400">*</span>
+                    </label>
+                    <select
+                      required
+                      value={tingkatan}
+                      onChange={(e) => setTingkatan(e.target.value as TingkatanKelas)}
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    >
+                      {TINGKATAN_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label} — {opt.description}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-slate-500">
+                      Generik untuk semua jenjang (setara kelas awal–lanjut). Leaderboard dipisah per tingkatan.
+                    </p>
                   </div>
 
                   <div className="space-y-1.5">

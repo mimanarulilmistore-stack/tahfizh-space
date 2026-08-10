@@ -7,6 +7,12 @@ import JuzMap from '@/components/JuzMap';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import { computeJuzProgress } from '@/src/utils/badgeCalculator';
 import {
+  TINGKATAN_OPTIONS,
+  type TingkatanKelas,
+  getTingkatanLabel,
+  normalizeTingkatan,
+} from '@/src/utils/tingkatan';
+import {
   ArrowLeft,
   RefreshCw,
   Save,
@@ -28,6 +34,7 @@ interface SantriProfile {
   kode_unik: string;
   nis: string | null;
   target_juz: number;
+  tingkatan?: string | null;
 }
 
 interface SetoranRecord {
@@ -72,6 +79,7 @@ export default function KelolaSantriPage() {
   const [nis, setNis] = useState('');
   const [kodeUnik, setKodeUnik] = useState('');
   const [targetJuz, setTargetJuz] = useState(30);
+  const [tingkatan, setTingkatan] = useState<TingkatanKelas>('dasar');
 
   const [setoranList, setSetoranList] = useState<SetoranRecord[]>([]);
   const [editSetoranId, setEditSetoranId] = useState<string | null>(null);
@@ -97,7 +105,7 @@ export default function KelolaSantriPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, nama_lengkap, kode_unik, nis, target_juz')
+        .select('id, nama_lengkap, kode_unik, nis, target_juz, tingkatan')
         .eq('id', santriId)
         .eq('role', 'santri')
         .maybeSingle();
@@ -113,6 +121,7 @@ export default function KelolaSantriPage() {
       setNis(profile.nis || '');
       setKodeUnik(profile.kode_unik || '');
       setTargetJuz(profile.target_juz || 30);
+      setTingkatan(normalizeTingkatan(profile.tingkatan) || 'dasar');
 
       const { data: setoran, error: setoranError } = await supabase
         .from('setoran_hafalan')
@@ -173,6 +182,7 @@ export default function KelolaSantriPage() {
           nis: nis.trim() ? nis.trim() : null,
           kode_unik: kodeUnik.trim().toUpperCase(),
           target_juz: Number(targetJuz) || 30,
+          tingkatan,
         })
         .eq('id', santriId);
 
@@ -463,6 +473,23 @@ export default function KelolaSantriPage() {
                   onChange={(e) => setTargetJuz(Number(e.target.value))}
                   className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                 />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-300">Tingkatan Kelas</label>
+                <select
+                  value={tingkatan}
+                  onChange={(e) => setTingkatan(e.target.value as TingkatanKelas)}
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                >
+                  {TINGKATAN_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-500">
+                  Saat ini: {getTingkatanLabel(tingkatan)}. Dipakai untuk leaderboard terpisah.
+                </p>
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <label className="text-xs font-semibold text-slate-300">Kode Unik / PIN *</label>
