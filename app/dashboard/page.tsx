@@ -3,9 +3,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
+import PusatInfoAdminCard, {
+  type InfoAdminItem,
+} from '@/components/PusatInfoAdminCard';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import { computeJuzProgress, getSantriLevel } from '@/src/utils/badgeCalculator';
 import { generateRandomKodeUnik } from '@/src/utils/kodeUnik';
+import { computeTargetMingguan } from '@/src/utils/targetMingguan';
 import {
   TINGKATAN_OPTIONS,
   type TingkatanKelas,
@@ -47,12 +51,29 @@ interface SantriProfile {
   nama_lengkap: string;
   kode_unik: string;
   nis: string | null;
+  no_wa_wali?: string | null;
   target_juz: number;
+  target_ziyadah_mingguan?: number | null;
+  target_murajaah_mingguan?: number | null;
   tingkatan?: string | null;
   created_at: string;
   total_setoran?: number;
   juz_selesai_count?: number;
   juz_tertinggi?: number;
+  setor_hari_ini?: boolean;
+  target_mingguan_tertinggal?: boolean;
+}
+
+function getLocalDateKey(raw?: string | null) {
+  if (!raw) return null;
+  const short = String(raw).slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(short)) return short;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 export default function AdminDashboardPage() {
@@ -111,6 +132,8 @@ export default function AdminDashboardPage() {
   const fetchDashboardData = async () => {
     setLoadingData(true);
     try {
+      const todayKey = getLocalDateKey(new Date().toISOString()) || '';
+
       // Fetch Santri
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
@@ -144,12 +167,23 @@ export default function AdminDashboardPage() {
       }
 
       const formattedSantri = (profiles || []).map((p) => {
-        const progress = computeJuzProgress(bySantri[p.id] || []);
+        const rows = bySantri[p.id] || [];
+        const progress = computeJuzProgress(rows);
+        const weekly = computeTargetMingguan(rows, {
+          targetZiyadah: p.target_ziyadah_mingguan ?? 3,
+          targetMurajaah: p.target_murajaah_mingguan ?? 2,
+        });
+        const setorHariIni = rows.some((row) => {
+          const rowKey = getLocalDateKey(row.tanggal_setoran || row.created_at);
+          return rowKey === todayKey;
+        });
         return {
           ...p,
           total_setoran: progress.totalSetoran,
           juz_selesai_count: progress.juzSelesaiCount,
           juz_tertinggi: progress.juzTertinggi,
+          setor_hari_ini: setorHariIni,
+          target_mingguan_tertinggal: weekly.hasTarget && !weekly.tercapaiSemua,
         };
       });
 
@@ -352,6 +386,80 @@ export default function AdminDashboardPage() {
 
   const filteredPerhatian = useMemo(() => perhatianList, [perhatianList]);
 
+  const operationalInfoItems = useMemo<InfoAdminItem[]>(() => {
+    const tanpaWaCount = santriList.filter((s) => !s.no_wa_wali?.trim()).length;
+    const tertinggalTargetCount = santriList.filter((s) => s.target_mingguan_tertinggal).length;
+    const sudahSetorHariIniCount = santriList.filter((s) => s.setor_hari_ini).length;
+    const belumSetorHariIniCount = Math.max(0, santriList.length - sudahSetorHariIniCount);
+
+    return [
+      {
+        id: 'perhatian',
+        eyebrow: 'Pantauan Operasional',
+        title:
+          filteredPerhatian.length > 0 ? 'Santri Perlu Perhatian' : 'Semua pantauan aman',
+        description:
+          filteredPerhatian.length > 0
+            ? `${filteredPerhatian.length} santri perlu ditindaklanjuti. Lihat daftar detail di bawah.`
+            : 'Tidak ada santri yang masuk kriteria perhatian saat ini.',
+        count: filteredPerhatian.length,
+        unit: 'santri',
+        tone: filteredPerhatian.length > 0 ? 'danger' : 'success',
+        actionLabel: 'Lihat detail',
+        onAction: () =>
+          document.getElementById('perhatian-section')?.scrollIntoView({ behavior: 'smooth' }),
+      },
+      {
+        id: 'target-mingguan',
+        eyebrow: 'Progress Mingguan',
+        title:
+          tertinggalTargetCount > 0
+            ? 'Target mingguan belum tercapai'
+            : 'Target mingguan on track',
+        description:
+          tertinggalTargetCount > 0
+            ? `${tertinggalTargetCount} santri masih tertinggal dari target ziyadah/murajaah minggu ini.`
+            : 'Semua santri yang punya target mingguan sedang on track.',
+        count: tertinggalTargetCount,
+        unit: 'santri',
+        tone: tertinggalTargetCount > 0 ? 'warning' : 'success',
+        actionLabel: 'Kelola santri',
+        onAction: () =>
+          document.getElementById('manajemen-santri-section')?.scrollIntoView({ behavior: 'smooth' }),
+      },
+      {
+        id: 'wa-wali',
+        eyebrow: 'Data Wali',
+        title: tanpaWaCount > 0 ? 'Nomor WA wali belum lengkap' : 'Nomor WA wali sudah lengkap',
+        description:
+          tanpaWaCount > 0
+            ? `${tanpaWaCount} santri belum memiliki nomor WA wali, sehingga tombol kirim WhatsApp belum optimal.`
+            : 'Semua santri sudah memiliki nomor WA wali.',
+        count: tanpaWaCount,
+        unit: 'santri',
+        tone: tanpaWaCount > 0 ? 'info' : 'success',
+        actionLabel: 'Buka daftar santri',
+        onAction: () =>
+          document.getElementById('manajemen-santri-section')?.scrollIntoView({ behavior: 'smooth' }),
+      },
+      {
+        id: 'setoran-hari-ini',
+        eyebrow: 'Aktivitas Hari Ini',
+        title:
+          belumSetorHariIniCount > 0 ? 'Masih ada yang belum setor hari ini' : 'Semua santri sudah setor hari ini',
+        description:
+          belumSetorHariIniCount > 0
+            ? `${sudahSetorHariIniCount} santri sudah setor hari ini, ${belumSetorHariIniCount} lainnya belum.`
+            : `${sudahSetorHariIniCount} santri sudah tercatat setor hari ini.`,
+        count: belumSetorHariIniCount,
+        unit: 'santri',
+        tone: belumSetorHariIniCount > 0 ? 'warning' : 'success',
+        actionLabel: 'Input massal',
+        onAction: () => router.push('/dashboard/input-massal'),
+      },
+    ];
+  }, [filteredPerhatian.length, router, santriList]);
+
   const severityClass = (severity: 'tinggi' | 'sedang' | 'rendah') => {
     if (severity === 'tinggi') return 'bg-rose-950 text-rose-300 border-rose-800';
     if (severity === 'sedang') return 'bg-amber-950 text-amber-300 border-amber-800';
@@ -452,24 +560,7 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              <div className="sm:col-span-2 bg-gradient-to-r from-slate-900 via-slate-900 to-rose-950/30 border border-slate-800 rounded-2xl p-6 flex items-center justify-between gap-4">
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-2 text-rose-300 text-xs font-bold uppercase tracking-wider">
-                    <AlertTriangle className="w-4 h-4" />
-                    Pantauan Operasional
-                  </div>
-                  <h3 className="text-base font-bold text-white">Santri Perlu Perhatian</h3>
-                  <p className="text-xs text-slate-400">
-                    {filteredPerhatian.length === 0
-                      ? 'Tidak ada santri yang masuk kriteria saat ini.'
-                      : `${filteredPerhatian.length} santri perlu ditindaklanjuti (lihat daftar di bawah).`}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-3xl font-extrabold text-rose-300">{filteredPerhatian.length}</p>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider">santri</p>
-                </div>
-              </div>
+              <PusatInfoAdminCard items={operationalInfoItems} />
             </div>
 
             {/* GAMIFIKASI LEADERBOARD PER TINGKATAN */}
@@ -558,7 +649,10 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* SANTRI PERLU PERHATIAN */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+          <div
+            id="perhatian-section"
+            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4"
+          >
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -689,7 +783,10 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* TABEL MANAJEMEN SANTRI */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          <div
+            id="manajemen-santri-section"
+            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6"
+          >
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
