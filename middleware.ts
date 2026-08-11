@@ -51,15 +51,19 @@ export async function middleware(request: NextRequest) {
     pathname === '/' ||
     pathname === '/login' ||
     pathname === '/portal' ||
-    pathname.startsWith('/santri/')
+    pathname.startsWith('/santri/') ||
+    pathname === '/auth/callback'
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    if (pathname.startsWith('/auth/')) {
+      url.searchParams.set('error', 'reset_session')
+    }
     return NextResponse.redirect(url)
   }
 
-  // Sudah login: jangan stuck di halaman login
+  // Sudah login: jangan stuck di halaman login (kecuali sedang reset password)
   if (user && pathname === '/login') {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'

@@ -12,7 +12,11 @@ import {
   Menu, 
   X,
   BookOpen,
-  Layers
+  Layers,
+  KeyRound,
+  AlertCircle,
+  CheckCircle2,
+  RefreshCw,
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -21,11 +25,51 @@ export default function HeaderAdmin() {
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    // Kembali ke halaman depan (2 opsi: ustadz / wali)
     window.location.assign('/');
+  };
+
+  const openPasswordModal = () => {
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError(null);
+    setPasswordSuccess(false);
+    setPasswordModalOpen(true);
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    if (newPassword.length < 8) {
+      setPasswordError('Kata sandi baru minimal 8 karakter.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Konfirmasi kata sandi tidak sama.');
+      return;
+    }
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setPasswordSuccess(true);
+      setTimeout(() => setPasswordModalOpen(false), 1500);
+    } catch (err: unknown) {
+      setPasswordError(
+        err instanceof Error ? err.message : 'Gagal mengubah kata sandi.'
+      );
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   const isActive = (path: string) => {
@@ -122,6 +166,15 @@ export default function HeaderAdmin() {
 
             <div className="h-4 w-[1px] bg-slate-800 mx-2" />
 
+            <button
+              onClick={openPasswordModal}
+              className="px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all flex items-center gap-1.5"
+              title="Ubah kata sandi"
+            >
+              <KeyRound className="w-4 h-4 text-amber-400" />
+              Sandi
+            </button>
+
             {/* LOGOUT */}
             <button
               onClick={handleLogout}
@@ -204,12 +257,93 @@ export default function HeaderAdmin() {
           </button>
 
           <button
+            onClick={openPasswordModal}
+            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 mt-2 border-t border-slate-800/80 pt-3"
+          >
+            <KeyRound className="w-4 h-4 text-amber-400" />
+            Ubah Kata Sandi
+          </button>
+
+          <button
             onClick={handleLogout}
-            className="w-full px-3.5 py-2.5 text-xs font-medium text-rose-400 hover:bg-rose-950/30 rounded-xl flex items-center gap-2.5 mt-2 border-t border-slate-800/80 pt-3"
+            className="w-full px-3.5 py-2.5 text-xs font-medium text-rose-400 hover:bg-rose-950/30 rounded-xl flex items-center gap-2.5"
           >
             <LogOut className="w-4 h-4" />
             Keluar
           </button>
+        </div>
+      )}
+
+      {passwordModalOpen && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-amber-400" />
+                Ubah Kata Sandi
+              </h3>
+              <button
+                type="button"
+                onClick={() => setPasswordModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {passwordSuccess ? (
+              <div className="p-3 rounded-xl bg-emerald-950/50 border border-emerald-800/60 text-emerald-200 text-xs flex gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                Kata sandi berhasil diperbarui.
+              </div>
+            ) : (
+              <form onSubmit={handleChangePassword} className="space-y-3">
+                {passwordError && (
+                  <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800/60 text-rose-200 text-xs flex gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {passwordError}
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-300">
+                    Kata sandi baru
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                    placeholder="Minimal 8 karakter"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-300">
+                    Ulangi kata sandi
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={passwordLoading}
+                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2"
+                >
+                  {passwordLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : null}
+                  Simpan
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       )}
     </header>

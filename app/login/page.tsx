@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import { 
   Lock, 
@@ -11,27 +11,41 @@ import {
   AlertCircle, 
   RefreshCw, 
   KeyRound, 
-  HelpCircle, 
   X, 
-  CheckCircle2 
+  CheckCircle2,
+  Send
 } from 'lucide-react';
+import { Suspense } from 'react';
 
 const supabase = getBrowserSupabase();
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
 
-  // UI Notification State
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
 
-  // Periksa apakah Ustadz sudah memiliki sesi aktif
+  useEffect(() => {
+    const err = searchParams.get('error');
+    if (err === 'reset_link' || err === 'reset_session') {
+      setErrorMessage(
+        'Tautan reset tidak valid atau sudah kedaluwarsa. Silakan minta email reset baru.'
+      );
+    } else if (err === 'config') {
+      setErrorMessage('Konfigurasi autentikasi belum lengkap. Hubungi administrator.');
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
@@ -49,7 +63,6 @@ export default function LoginPage() {
     checkExistingSession();
   }, [router]);
 
-  // Handler Submit Login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -78,13 +91,53 @@ export default function LoginPage() {
         throw new Error('Login berhasil tapi sesi tidak terbentuk. Coba muat ulang halaman.');
       }
 
-      // Hard navigation agar cookie sesi terbaca middleware dengan andal
       window.location.assign('/dashboard');
       return;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Login Error:', err);
-      setErrorMessage(err.message || 'Terjadi kesalahan saat masuk. Silakan coba lagi.');
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Terjadi kesalahan saat masuk. Silakan coba lagi.';
+      setErrorMessage(message);
       setLoading(false);
+    }
+  };
+
+  const openForgot = () => {
+    setResetEmail(email.trim());
+    setResetSuccess(false);
+    setResetError(null);
+    setIsForgotPasswordOpen(true);
+  };
+
+  const handleSendReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError(null);
+    setResetSuccess(false);
+
+    const target = resetEmail.trim();
+    if (!target) {
+      setResetError('Masukkan email akun ustadz Anda.');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const { error } = await supabase.auth.resetPasswordForEmail(target, {
+        redirectTo: `${origin}/auth/callback?next=/auth/update-password`,
+      });
+      if (error) throw error;
+      setResetSuccess(true);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Gagal mengirim email reset. Coba lagi nanti.';
+      setResetError(message);
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -102,7 +155,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 font-sans">
       
-      {/* BACKGROUND DECORATION */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
@@ -110,24 +162,21 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md space-y-6">
         
-        {/* BRANDING HEADER */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-950/80 border border-emerald-800/80 rounded-full text-emerald-400 text-xs font-semibold tracking-wide">
             <Sparkles className="w-3.5 h-3.5" />
             Portal Pengampu Tahfizh
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Mutaba'ah Santri
+            Mutaba&apos;ah Santri
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 max-w-xs mx-auto">
             Masuk dengan akun Ustadz / Pengelola untuk mengelola pencatatan hafalan.
           </p>
         </div>
 
-        {/* CARD LOGIN FORM */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
           
-          {/* ALERT ERROR */}
           {errorMessage && (
             <div className="p-4 bg-rose-950/70 border border-rose-800/80 rounded-xl flex items-start gap-3 text-rose-200 text-xs animate-in fade-in duration-200">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
@@ -137,7 +186,6 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             
-            {/* EMAIL FIELD */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-300 block">
                 Alamat Email Ustadz
@@ -155,7 +203,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* PASSWORD FIELD */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-slate-300 block">
@@ -163,7 +210,7 @@ export default function LoginPage() {
                 </label>
                 <button
                   type="button"
-                  onClick={() => setIsForgotPasswordOpen(true)}
+                  onClick={openForgot}
                   className="text-[11px] text-emerald-400 hover:underline font-medium"
                 >
                   Lupa password?
@@ -182,7 +229,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* SUBMIT BUTTON */}
             <button
               type="submit"
               disabled={loading}
@@ -203,7 +249,6 @@ export default function LoginPage() {
 
           </form>
 
-          {/* FOOTER NOTICE */}
           <div className="border-t border-slate-800/80 pt-4 text-center">
             <p className="text-[11px] text-slate-500">
               Belum memiliki akun Ustadz? Hubungi <span className="text-slate-300 font-medium">Administrator Pesantren</span> untuk pendaftaran.
@@ -214,16 +259,16 @@ export default function LoginPage() {
 
       </div>
 
-      {/* MODAL LUPA PASSWORD */}
       {isForgotPasswordOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-emerald-400" />
-                Bantuan Kata Sandi
+                Reset Kata Sandi
               </h3>
               <button
+                type="button"
                 onClick={() => setIsForgotPasswordOpen(false)}
                 className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-all"
               >
@@ -231,30 +276,78 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="space-y-3 text-xs text-slate-300">
-              <p>
-                Untuk menjaga keamanan data setoran santri, pemulihan kata sandi dilakukan secara terpusat oleh Pengelola Utama.
-              </p>
-              <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl space-y-1.5">
-                <span className="font-semibold text-emerald-400 block">Langkah Pemulihan:</span>
-                <ol className="list-decimal list-inside space-y-1 text-slate-400 text-[11px]">
-                  <li>Hubungi Tim IT / Admin Pusat Tahfizh.</li>
-                  <li>Sebutkan nama lengkap dan email Anda.</li>
-                  <li>Admin akan memverifikasi dan mengirimkan tautan reset kata sandi baru.</li>
-                </ol>
+            {resetSuccess ? (
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-emerald-950/50 border border-emerald-800/60 text-emerald-200 text-xs flex gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>
+                    Jika email <strong className="font-semibold">{resetEmail}</strong> terdaftar,
+                    tautan reset telah dikirim. Periksa kotak masuk / spam.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPasswordOpen(false)}
+                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs"
+                >
+                  Tutup
+                </button>
               </div>
-            </div>
-
-            <button
-              onClick={() => setIsForgotPasswordOpen(false)}
-              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition-all"
-            >
-              Saya Mengerti
-            </button>
+            ) : (
+              <form onSubmit={handleSendReset} className="space-y-3">
+                <p className="text-xs text-slate-400">
+                  Masukkan email akun ustadz. Kami kirim tautan untuk membuat kata sandi baru
+                  (berlaku terbatas).
+                </p>
+                {resetError && (
+                  <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800/60 text-rose-200 text-xs flex gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {resetError}
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="ustadz@pesantren.com"
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2"
+                >
+                  {resetLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                  Kirim Tautan Reset
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
 
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300 text-sm">
+          Memuat...
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }
