@@ -11,7 +11,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  BookOpen
+  BookOpen,
+  Layers
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -27,11 +28,11 @@ export default function HeaderAdmin() {
     window.location.assign('/');
   };
 
-  const isActive = (path: string) =>
-    path === '/dashboard'
-      ? pathname === '/dashboard'
-      : pathname === path || pathname.startsWith(`${path}/`);
-
+  const isActive = (path: string) => {
+    if (path === '/dashboard') return pathname === '/dashboard';
+    if (path === '/dashboard/input') return pathname === '/dashboard/input';
+    return pathname === path || pathname.startsWith(`${path}/`);
+  };
   return (
     <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -79,6 +80,18 @@ export default function HeaderAdmin() {
             >
               <BookOpen className="w-4 h-4 text-emerald-400" />
               Input Setoran
+            </button>
+
+            <button
+              onClick={() => router.push('/dashboard/input-massal')}
+              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
+                isActive('/dashboard/input-massal') 
+                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300' 
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+              }`}
+            >
+              <Layers className="w-4 h-4 text-sky-400" />
+              Input Massal
             </button>
 
             {/* TOMBOL CETAK PIN */}
@@ -155,6 +168,17 @@ export default function HeaderAdmin() {
           >
             <BookOpen className="w-4 h-4 text-emerald-400" />
             Input Setoran
+          </button>
+
+          <button
+            onClick={() => {
+              router.push('/dashboard/input-massal');
+              setIsMobileMenuOpen(false);
+            }}
+            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
+          >
+            <Layers className="w-4 h-4 text-sky-400" />
+            Input Massal
           </button>
 
           <button

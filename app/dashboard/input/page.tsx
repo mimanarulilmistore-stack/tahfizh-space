@@ -256,9 +256,18 @@ function InputSetoranContent() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-800/60 px-3.5 py-1.5 rounded-full text-emerald-300 text-xs font-medium w-fit">
-            <ShieldCheck className="w-4 h-4" />
-            Sesi Ustadz Terverifikasi
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard/input-massal')}
+              className="px-4 py-2.5 bg-sky-950/50 hover:bg-sky-900 border border-sky-800/60 text-sky-200 text-xs font-bold rounded-xl"
+            >
+              Input Massal (banyak santri)
+            </button>
+            <div className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-800/60 px-3.5 py-1.5 rounded-full text-emerald-300 text-xs font-medium w-fit">
+              <ShieldCheck className="w-4 h-4" />
+              Sesi Ustadz Terverifikasi
+            </div>
           </div>
         </div>
 
