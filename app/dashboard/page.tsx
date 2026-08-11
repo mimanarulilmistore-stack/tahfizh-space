@@ -64,6 +64,17 @@ interface SantriProfile {
   target_mingguan_tertinggal?: boolean;
 }
 
+interface PengumumanAdmin {
+  id: string;
+  judul: string;
+  isi: string;
+  tingkat: 'info' | 'penting' | 'darurat';
+  pinned?: boolean;
+  aktif: boolean;
+  tampil_mulai: string | null;
+  tampil_sampai: string | null;
+}
+
 function getLocalDateKey(raw?: string | null) {
   if (!raw) return null;
   const short = String(raw).slice(0, 10);
@@ -86,6 +97,7 @@ export default function AdminDashboardPage() {
   // State Data Main & Analytics
   const [santriList, setSantriList] = useState<SantriProfile[]>([]);
   const [perhatianList, setPerhatianList] = useState<ItemPerhatian[]>([]);
+  const [pengumumanList, setPengumumanList] = useState<PengumumanAdmin[]>([]);
   const [totalSetoranGlobal, setTotalSetoranGlobal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [tingkatanFilter, setTingkatanFilter] = useState<'all' | TingkatanKelas>('all');
@@ -157,6 +169,16 @@ export default function AdminDashboardPage() {
         .select(
           'id, santri_id, jenis_setoran, juz, juz_selesai, nilai_kelancaran, nilai_tajwid, tanggal_setoran, created_at'
         );
+      const { data: pengumumanData, error: pengumumanError } = await supabase
+        .from('admin_pengumuman')
+        .select('id, judul, isi, tingkat, pinned, aktif, tampil_mulai, tampil_sampai')
+        .eq('aktif', true)
+        .order('pinned', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (pengumumanError) {
+        console.error('Error fetching pengumuman:', pengumumanError);
+      }
 
       const bySantri: Record<string, any[]> = {};
       if (setoranData) {
@@ -189,6 +211,7 @@ export default function AdminDashboardPage() {
 
       setSantriList(formattedSantri);
       setPerhatianList(detectSantriPerluPerhatian(formattedSantri, bySantri));
+      setPengumumanList((pengumumanData || []) as PengumumanAdmin[]);
     } catch (err: any) {
       console.error('Fetch Dashboard Error:', err);
       setToastMessage({ type: 'error', text: 'Gagal memuat data dashboard.' });
@@ -387,12 +410,37 @@ export default function AdminDashboardPage() {
   const filteredPerhatian = useMemo(() => perhatianList, [perhatianList]);
 
   const operationalInfoItems = useMemo<InfoAdminItem[]>(() => {
+    const todayKey = getLocalDateKey(new Date().toISOString()) || '';
     const tanpaWaCount = santriList.filter((s) => !s.no_wa_wali?.trim()).length;
     const tertinggalTargetCount = santriList.filter((s) => s.target_mingguan_tertinggal).length;
     const sudahSetorHariIniCount = santriList.filter((s) => s.setor_hari_ini).length;
     const belumSetorHariIniCount = Math.max(0, santriList.length - sudahSetorHariIniCount);
+    const pengumumanAktif = pengumumanList.filter((item) => {
+      if (!item.aktif) return false;
+      const mulai = item.tampil_mulai ? getLocalDateKey(item.tampil_mulai) : null;
+      const sampai = item.tampil_sampai ? getLocalDateKey(item.tampil_sampai) : null;
+      if (mulai && mulai > todayKey) return false;
+      if (sampai && sampai < todayKey) return false;
+      return true;
+    });
 
     return [
+      ...pengumumanAktif.map<InfoAdminItem>((item) => ({
+        id: `pengumuman-${item.id}`,
+        eyebrow: item.pinned ? 'Pengumuman Dipin' : 'Pengumuman Admin',
+        title: item.judul,
+        description: item.isi,
+        count: 1,
+        unit: item.tingkat,
+        tone:
+          item.tingkat === 'darurat'
+            ? 'danger'
+            : item.tingkat === 'penting'
+              ? 'warning'
+              : 'info',
+        actionLabel: 'Kelola pengumuman',
+        onAction: () => router.push('/dashboard/pengumuman'),
+      })),
       {
         id: 'perhatian',
         eyebrow: 'Pantauan Operasional',
@@ -458,7 +506,7 @@ export default function AdminDashboardPage() {
         onAction: () => router.push('/dashboard/input-massal'),
       },
     ];
-  }, [filteredPerhatian.length, router, santriList]);
+  }, [filteredPerhatian.length, pengumumanList, router, santriList]);
 
   const severityClass = (severity: 'tinggi' | 'sedang' | 'rendah') => {
     if (severity === 'tinggi') return 'bg-rose-950 text-rose-300 border-rose-800';

@@ -17,6 +17,7 @@ import {
   AlertCircle,
   CheckCircle2,
   RefreshCw,
+  Megaphone,
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -164,6 +165,18 @@ export default function HeaderAdmin() {
               Laporan
             </button>
 
+            <button
+              onClick={() => router.push('/dashboard/pengumuman')}
+              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
+                isActive('/dashboard/pengumuman')
+                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+              }`}
+            >
+              <Megaphone className="w-4 h-4 text-amber-400" />
+              Pengumuman
+            </button>
+
             <div className="h-4 w-[1px] bg-slate-800 mx-2" />
 
             <button
@@ -254,6 +267,17 @@ export default function HeaderAdmin() {
           >
             <FileText className="w-4 h-4 text-emerald-400" />
             Laporan & Rapor
+          </button>
+
+          <button
+            onClick={() => {
+              router.push('/dashboard/pengumuman');
+              setIsMobileMenuOpen(false);
+            }}
+            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
+          >
+            <Megaphone className="w-4 h-4 text-amber-400" />
+            Pengumuman
           </button>
 
           <button
