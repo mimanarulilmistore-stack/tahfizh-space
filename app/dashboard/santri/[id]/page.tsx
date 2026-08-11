@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
 import JuzMap from '@/components/JuzMap';
 import RingkasanBulananCard from '@/components/RingkasanBulanan';
+import SalinPesanWali from '@/components/SalinPesanWali';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import { computeJuzProgress } from '@/src/utils/badgeCalculator';
 import {
@@ -13,6 +14,7 @@ import {
   getTingkatanLabel,
   normalizeTingkatan,
 } from '@/src/utils/tingkatan';
+import type { PesanSetoranWaliInput } from '@/src/utils/pesanWali';
 import {
   ArrowLeft,
   RefreshCw,
@@ -26,6 +28,7 @@ import {
   X,
   Check,
   Printer,
+  MessageCircle,
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -88,6 +91,7 @@ export default function KelolaSantriPage() {
   const [setoranForm, setSetoranForm] = useState(emptySetoranForm);
   const [busyJuz, setBusyJuz] = useState<number | null>(null);
   const [markingSetoranId, setMarkingSetoranId] = useState<string | null>(null);
+  const [pesanWaliPayload, setPesanWaliPayload] = useState<PesanSetoranWaliInput | null>(null);
 
   const showToast = (type: 'success' | 'error', text: string) => {
     setToast({ type, text });
@@ -281,6 +285,25 @@ export default function KelolaSantriPage() {
     } catch (err: any) {
       showToast('error', err.message || 'Gagal menghapus setoran.');
     }
+  };
+
+  const openPesanWali = (item: SetoranRecord) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    setPesanWaliPayload({
+      namaSantri: namaLengkap || 'Santri',
+      kodeUnik,
+      jenisSetoran: item.jenis_setoran,
+      namaSurah: item.nama_surah,
+      juz: item.juz,
+      ayatMulai: item.ayat_mulai,
+      ayatSelesai: item.ayat_selesai,
+      nilaiKelancaran: item.nilai_kelancaran,
+      nilaiTajwid: item.nilai_tajwid,
+      catatan: item.catatan,
+      juzSelesai: item.juz_selesai,
+      tanggalSetoran: item.tanggal_setoran || item.created_at,
+      portalUrl: kodeUnik ? `${origin}/santri/${kodeUnik}` : null,
+    });
   };
 
   const markJuzSelesaiOnSetoran = async (item: SetoranRecord) => {
@@ -543,6 +566,16 @@ export default function KelolaSantriPage() {
             variant="dark"
           />
 
+          {pesanWaliPayload && (
+            <div className="print:hidden">
+              <SalinPesanWali
+                payload={pesanWaliPayload}
+                variant="panel"
+                onClose={() => setPesanWaliPayload(null)}
+              />
+            </div>
+          )}
+
           <div className="print:hidden space-y-6">
           <JuzMap
             completedJuz={juzProgress.juzSelesaiList}
@@ -618,6 +651,14 @@ export default function KelolaSantriPage() {
                           </td>
                           <td className="px-3 py-2.5 text-right">
                             <div className="inline-flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => openPesanWali(item)}
+                                className="p-1.5 rounded-lg bg-sky-950/40 hover:bg-sky-900 border border-sky-800/60 text-sky-300"
+                                title="Salin pesan untuk wali"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </button>
                               {item.jenis_setoran === 'ziyadah' &&
                                 item.juz &&
                                 !item.juz_selesai && (

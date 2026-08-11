@@ -3,7 +3,9 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
+import SalinPesanWali from '@/components/SalinPesanWali';
 import { getBrowserSupabase } from '@/src/lib/supabase';
+import type { PesanSetoranWaliInput } from '@/src/utils/pesanWali';
 import { 
   BookOpen, 
   UserCheck, 
@@ -60,6 +62,7 @@ function InputSetoranContent() {
 
   // State Notification Feedback
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [pesanWaliPayload, setPesanWaliPayload] = useState<PesanSetoranWaliInput | null>(null);
 
   // 1. Proteksi Route & Fetch Sesi Ustadz
   useEffect(() => {
@@ -167,10 +170,28 @@ function InputSetoranContent() {
         throw error;
       }
 
+      const santri = santriList.find((s) => s.id === selectedSantriId);
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      setPesanWaliPayload({
+        namaSantri: santri?.nama_lengkap || 'Santri',
+        kodeUnik: santri?.kode_unik,
+        jenisSetoran,
+        namaSurah: namaSurah.trim(),
+        juz: Number(juz),
+        ayatMulai,
+        ayatSelesai,
+        nilaiKelancaran,
+        nilaiTajwid,
+        catatan: catatan.trim() || null,
+        juzSelesai: jenisSetoran === 'ziyadah' ? juzSelesai : false,
+        tanggalSetoran,
+        portalUrl: santri?.kode_unik ? `${origin}/santri/${santri.kode_unik}` : null,
+      });
+
       // Notifikasi Sukses & Reset Form
       setToastMessage({ 
         type: 'success', 
-        text: 'Data setoran hafalan berhasil disimpan dan langsung diperbarui di portal santri!' 
+        text: 'Setoran tersimpan. Anda bisa salin pesan manual untuk dikirim ke wali via WhatsApp.' 
       });
       resetForm();
 
@@ -258,6 +279,14 @@ function InputSetoranContent() {
               <p className="opacity-90 mt-0.5">{toastMessage.text}</p>
             </div>
           </div>
+        )}
+
+        {pesanWaliPayload && (
+          <SalinPesanWali
+            payload={pesanWaliPayload}
+            variant="panel"
+            onClose={() => setPesanWaliPayload(null)}
+          />
         )}
 
         {/* FORM CARD */}
