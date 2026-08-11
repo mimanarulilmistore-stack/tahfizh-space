@@ -1,6 +1,7 @@
 export type PesanSetoranWaliInput = {
   namaSantri: string;
   kodeUnik?: string | null;
+  noWaWali?: string | null;
   jenisSetoran: string;
   namaSurah?: string | null;
   juz?: number | null;
@@ -15,12 +16,13 @@ export type PesanSetoranWaliInput = {
 };
 
 function formatTanggalId(raw?: string | null) {
-  if (!raw) return new Date().toLocaleDateString('id-ID', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  if (!raw)
+    return new Date().toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
   const d = /^\d{4}-\d{2}-\d{2}$/.test(raw)
     ? new Date(`${raw}T12:00:00`)
     : new Date(raw);
@@ -33,7 +35,22 @@ function formatTanggalId(raw?: string | null) {
   });
 }
 
-/** Template pesan manual untuk disalin ke WhatsApp / SMS (tanpa API). */
+/**
+ * Normalisasi nomor ke format internasional tanpa +.
+ * 0812... → 62812... | +62 812... → 62812...
+ */
+export function normalizeWaNumber(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  let n = String(raw).trim();
+  if (!n) return null;
+  n = n.replace(/[^\d+]/g, '');
+  if (n.startsWith('+')) n = n.slice(1);
+  if (n.startsWith('0')) n = `62${n.slice(1)}`;
+  if (!/^\d{10,15}$/.test(n)) return null;
+  return n;
+}
+
+/** Template pesan untuk WhatsApp (tanpa API otomatis). */
 export function buildPesanSetoranWali(input: PesanSetoranWaliInput): string {
   const jenis = (input.jenisSetoran || '').toLowerCase() === 'murajaah' ? 'Murajaah' : 'Ziyadah';
   const surah = input.namaSurah?.trim() || '-';
@@ -75,6 +92,16 @@ export function buildPesanSetoranWali(input: PesanSetoranWaliInput): string {
   return lines.join('\n');
 }
 
+/** URL WhatsApp click-to-chat (admin tinggal tekan Kirim di aplikasi WA). */
+export function buildWhatsAppClickToChatUrl(
+  noWaWali: string | null | undefined,
+  pesan: string
+): string | null {
+  const phone = normalizeWaNumber(noWaWali);
+  if (!phone) return null;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(pesan)}`;
+}
+
 export async function copyTextToClipboard(text: string): Promise<boolean> {
   try {
     if (navigator.clipboard?.writeText) {
@@ -82,7 +109,7 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
       return true;
     }
   } catch {
-    // fallback di bawah
+    // fallback
   }
 
   try {

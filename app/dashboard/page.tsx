@@ -73,6 +73,7 @@ export default function AdminDashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [namaLengkap, setNamaLengkap] = useState('');
   const [nis, setNis] = useState('');
+  const [noWaWali, setNoWaWali] = useState('');
   const [targetJuz, setTargetJuz] = useState<number>(30);
   const [tingkatan, setTingkatan] = useState<TingkatanKelas>('dasar');
   const [generatedKodeUnik, setGeneratedKodeUnik] = useState('');
@@ -185,6 +186,7 @@ export default function AdminDashboardPage() {
   const handleOpenModal = async () => {
     setNamaLengkap('');
     setNis('');
+    setNoWaWali('');
     setTargetJuz(30);
     setTingkatan('dasar');
     setModalError(null);
@@ -218,6 +220,7 @@ export default function AdminDashboardPage() {
           id: newId,
           nama_lengkap: namaLengkap.trim(),
           nis: nis.trim() ? nis.trim() : null,
+          no_wa_wali: noWaWali.trim() ? noWaWali.trim() : null,
           kode_unik: kode,
           target_juz: Number(targetJuz) || 30,
           tingkatan,
@@ -887,6 +890,22 @@ export default function AdminDashboardPage() {
                       placeholder="Contoh: 2026001"
                       className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                     />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">
+                      No. WhatsApp Wali (Opsional)
+                    </label>
+                    <input
+                      type="tel"
+                      value={noWaWali}
+                      onChange={(e) => setNoWaWali(e.target.value)}
+                      placeholder="Contoh: 081234567890"
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      Dipakai untuk tombol &quot;Kirim via WhatsApp&quot; setelah setoran.
+                    </p>
                   </div>
 
                   <div className="space-y-1.5">

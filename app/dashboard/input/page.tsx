@@ -30,6 +30,7 @@ interface SantriOption {
   nama_lengkap: string;
   kode_unik: string;
   nis: string | null;
+  no_wa_wali: string | null;
 }
 
 function InputSetoranContent() {
@@ -79,7 +80,7 @@ function InputSetoranContent() {
 
         const { data: santriData, error: santriError } = await supabase
           .from('profiles')
-          .select('id, nama_lengkap, kode_unik, nis')
+          .select('id, nama_lengkap, kode_unik, nis, no_wa_wali')
           .eq('role', 'santri')
           .order('nama_lengkap', { ascending: true });
 
@@ -175,6 +176,7 @@ function InputSetoranContent() {
       setPesanWaliPayload({
         namaSantri: santri?.nama_lengkap || 'Santri',
         kodeUnik: santri?.kode_unik,
+        noWaWali: santri?.no_wa_wali,
         jenisSetoran,
         namaSurah: namaSurah.trim(),
         juz: Number(juz),
@@ -191,7 +193,9 @@ function InputSetoranContent() {
       // Notifikasi Sukses & Reset Form
       setToastMessage({ 
         type: 'success', 
-        text: 'Setoran tersimpan. Anda bisa salin pesan manual untuk dikirim ke wali via WhatsApp.' 
+        text: santri?.no_wa_wali
+          ? 'Setoran tersimpan. Tekan “Kirim via WhatsApp” untuk buka chat ke wali.'
+          : 'Setoran tersimpan. Isi No. WA wali di profil santri agar bisa kirim langsung.',
       });
       resetForm();
 

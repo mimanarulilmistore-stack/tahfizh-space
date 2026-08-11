@@ -3,10 +3,12 @@
 import React, { useState } from 'react';
 import {
   buildPesanSetoranWali,
+  buildWhatsAppClickToChatUrl,
   copyTextToClipboard,
+  normalizeWaNumber,
   type PesanSetoranWaliInput,
 } from '@/src/utils/pesanWali';
-import { Check, Copy, MessageCircle, X } from 'lucide-react';
+import { Check, Copy, ExternalLink, MessageCircle, X } from 'lucide-react';
 
 type SalinPesanWaliProps = {
   payload: PesanSetoranWaliInput;
@@ -25,6 +27,8 @@ export default function SalinPesanWali({
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(variant === 'panel');
   const pesan = buildPesanSetoranWali(payload);
+  const waUrl = buildWhatsAppClickToChatUrl(payload.noWaWali, pesan);
+  const hasWa = Boolean(waUrl);
 
   const handleCopy = async () => {
     const ok = await copyTextToClipboard(pesan);
@@ -37,19 +41,36 @@ export default function SalinPesanWali({
     }
   };
 
+  const handleKirimWa = () => {
+    if (!waUrl) {
+      alert(
+        'Nomor WhatsApp wali belum diisi. Isi di Kelola Santri / saat tambah santri, atau salin pesan manual.'
+      );
+      return;
+    }
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+  };
+
   if (variant === 'compact') {
     return (
       <div className={className}>
         <button
           type="button"
-          onClick={async () => {
-            setOpen(true);
-            await handleCopy();
+          onClick={() => {
+            if (hasWa) {
+              handleKirimWa();
+            } else {
+              setOpen(true);
+            }
           }}
           className="p-1.5 rounded-lg bg-sky-950/40 hover:bg-sky-900 border border-sky-800/60 text-sky-300"
-          title="Salin pesan untuk wali (WhatsApp manual)"
+          title={
+            hasWa
+              ? 'Kirim via WhatsApp'
+              : 'Nomor WA wali belum ada — buka pesan manual'
+          }
         >
-          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <MessageCircle className="w-3.5 h-3.5" />}
+          <MessageCircle className="w-3.5 h-3.5" />
         </button>
         {open && (
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -70,23 +91,37 @@ export default function SalinPesanWali({
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Manual: salin teks ini, lalu tempel ke WhatsApp wali. Tidak ada pengiriman otomatis.
-              </p>
+              {!hasWa && (
+                <p className="text-[11px] text-amber-300">
+                  Nomor WA wali belum diisi. Isi di profil santri agar tombol kirim langsung ke chat.
+                </p>
+              )}
               <textarea
                 readOnly
                 value={pesan}
                 rows={12}
                 className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 font-mono"
               />
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="w-full px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2"
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? 'Tersalin!' : 'Salin ke Clipboard'}
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                {hasWa && (
+                  <button
+                    type="button"
+                    onClick={handleKirimWa}
+                    className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Kirim via WhatsApp
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="flex-1 px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Tersalin!' : 'Salin Teks'}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -102,10 +137,12 @@ export default function SalinPesanWali({
         <div>
           <h3 className="text-sm font-bold text-sky-200 flex items-center gap-2">
             <MessageCircle className="w-4 h-4" />
-            Notifikasi Manual ke Wali
+            Kirim Laporan ke Wali
           </h3>
           <p className="text-[11px] text-sky-300/80 mt-0.5">
-            Salin pesan → tempel ke WhatsApp. Tidak memakai API / pengiriman otomatis.
+            {hasWa
+              ? `Membuka WhatsApp ke ${normalizeWaNumber(payload.noWaWali)} dengan pesan siap kirim.`
+              : 'Nomor WA wali belum diisi — isi di profil santri, atau salin teks manual.'}
           </p>
         </div>
         {onClose && (
@@ -127,14 +164,25 @@ export default function SalinPesanWali({
         className="w-full px-3 py-2 bg-slate-950 border border-sky-900/50 rounded-xl text-xs text-slate-200 font-mono leading-relaxed"
       />
 
-      <button
-        type="button"
-        onClick={handleCopy}
-        className="w-full sm:w-auto px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl inline-flex items-center justify-center gap-2"
-      >
-        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-        {copied ? 'Pesan tersalin — tempel di WhatsApp' : 'Salin Pesan untuk Wali'}
-      </button>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <button
+          type="button"
+          onClick={handleKirimWa}
+          disabled={!hasWa}
+          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-400 text-white text-xs font-bold rounded-xl inline-flex items-center justify-center gap-2"
+        >
+          <ExternalLink className="w-4 h-4" />
+          Kirim via WhatsApp
+        </button>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl inline-flex items-center justify-center gap-2"
+        >
+          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+          {copied ? 'Tersalin' : 'Salin Teks'}
+        </button>
+      </div>
     </div>
   );
 }

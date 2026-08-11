@@ -82,6 +82,7 @@ export default function KelolaSantriPage() {
 
   const [namaLengkap, setNamaLengkap] = useState('');
   const [nis, setNis] = useState('');
+  const [noWaWali, setNoWaWali] = useState('');
   const [kodeUnik, setKodeUnik] = useState('');
   const [targetJuz, setTargetJuz] = useState(30);
   const [tingkatan, setTingkatan] = useState<TingkatanKelas>('dasar');
@@ -111,7 +112,7 @@ export default function KelolaSantriPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, nama_lengkap, kode_unik, nis, target_juz, tingkatan')
+        .select('id, nama_lengkap, kode_unik, nis, no_wa_wali, target_juz, tingkatan')
         .eq('id', santriId)
         .eq('role', 'santri')
         .maybeSingle();
@@ -125,6 +126,7 @@ export default function KelolaSantriPage() {
 
       setNamaLengkap(profile.nama_lengkap || '');
       setNis(profile.nis || '');
+      setNoWaWali(profile.no_wa_wali || '');
       setKodeUnik(profile.kode_unik || '');
       setTargetJuz(profile.target_juz || 30);
       setTingkatan(normalizeTingkatan(profile.tingkatan) || 'dasar');
@@ -186,6 +188,7 @@ export default function KelolaSantriPage() {
         .update({
           nama_lengkap: namaLengkap.trim(),
           nis: nis.trim() ? nis.trim() : null,
+          no_wa_wali: noWaWali.trim() ? noWaWali.trim() : null,
           kode_unik: kodeUnik.trim().toUpperCase(),
           target_juz: Number(targetJuz) || 30,
           tingkatan,
@@ -292,6 +295,7 @@ export default function KelolaSantriPage() {
     setPesanWaliPayload({
       namaSantri: namaLengkap || 'Santri',
       kodeUnik,
+      noWaWali,
       jenisSetoran: item.jenis_setoran,
       namaSurah: item.nama_surah,
       juz: item.juz,
@@ -499,6 +503,19 @@ export default function KelolaSantriPage() {
                   onChange={(e) => setNis(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                 />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-300">No. WhatsApp Wali</label>
+                <input
+                  type="tel"
+                  value={noWaWali}
+                  onChange={(e) => setNoWaWali(e.target.value)}
+                  placeholder="081234567890"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                />
+                <p className="text-[11px] text-slate-500">
+                  Format 08… atau 62… — untuk tombol Kirim via WhatsApp.
+                </p>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-300">Target Juz</label>
