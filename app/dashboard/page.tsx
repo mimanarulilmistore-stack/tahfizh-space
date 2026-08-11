@@ -75,6 +75,8 @@ export default function AdminDashboardPage() {
   const [nis, setNis] = useState('');
   const [noWaWali, setNoWaWali] = useState('');
   const [targetJuz, setTargetJuz] = useState<number>(30);
+  const [targetZiyadahMingguan, setTargetZiyadahMingguan] = useState(3);
+  const [targetMurajaahMingguan, setTargetMurajaahMingguan] = useState(2);
   const [tingkatan, setTingkatan] = useState<TingkatanKelas>('dasar');
   const [generatedKodeUnik, setGeneratedKodeUnik] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -188,6 +190,8 @@ export default function AdminDashboardPage() {
     setNis('');
     setNoWaWali('');
     setTargetJuz(30);
+    setTargetZiyadahMingguan(3);
+    setTargetMurajaahMingguan(2);
     setTingkatan('dasar');
     setModalError(null);
     setGeneratedKodeUnik(await generateUniqueKode());
@@ -223,6 +227,8 @@ export default function AdminDashboardPage() {
           no_wa_wali: noWaWali.trim() ? noWaWali.trim() : null,
           kode_unik: kode,
           target_juz: Number(targetJuz) || 30,
+          target_ziyadah_mingguan: Math.max(0, Number(targetZiyadahMingguan) || 0),
+          target_murajaah_mingguan: Math.max(0, Number(targetMurajaahMingguan) || 0),
           tingkatan,
           role: 'santri',
         };
@@ -942,6 +948,38 @@ export default function AdminDashboardPage() {
                       className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                     />
                   </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">
+                        Target Ziyadah / Minggu
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={30}
+                        value={targetZiyadahMingguan}
+                        onChange={(e) => setTargetZiyadahMingguan(Number(e.target.value))}
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">
+                        Target Murajaah / Minggu
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={30}
+                        value={targetMurajaahMingguan}
+                        onChange={(e) => setTargetMurajaahMingguan(Number(e.target.value))}
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-500 -mt-2">
+                    Default 3 ziyadah + 2 murajaah. Progress tampil di portal wali (Senin–Minggu).
+                  </p>
 
                   <div className="space-y-1.5 bg-slate-950 border border-slate-800 p-3 rounded-xl">
                     <div className="flex items-center justify-between">

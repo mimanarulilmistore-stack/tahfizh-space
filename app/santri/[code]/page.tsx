@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import SantriBadgesGrid from "@/components/SantriBadgesGrid";
 import JuzMap from "@/components/JuzMap";
 import RingkasanBulananCard from "@/components/RingkasanBulanan";
+import TargetMingguanCard from "@/components/TargetMingguanCard";
 import PortalExitButton from "@/components/PortalExitButton";
 import Link from "next/link";
 import { computeJuzProgress, getSantriLevel } from "@/src/utils/badgeCalculator";
@@ -20,6 +21,8 @@ type SantriPublic = {
   nis: string | null;
   target_juz: number | null;
   tingkatan?: string | null;
+  target_ziyadah_mingguan?: number | null;
+  target_murajaah_mingguan?: number | null;
 };
 
 type SetoranPublic = {
@@ -33,6 +36,7 @@ type SetoranPublic = {
   nilai_kelancaran: string | null;
   nilai_tajwid: string | null;
   catatan: string | null;
+  tanggal_setoran?: string | null;
   created_at: string;
 };
 
@@ -74,7 +78,9 @@ export default async function SantriDetailPage({ params }: PageProps) {
     // Fallback jika RPC belum dijalankan di Supabase
     const { data } = await supabase
       .from("profiles")
-      .select("id, nama_lengkap, kode_unik, nis, target_juz, tingkatan")
+      .select(
+        "id, nama_lengkap, kode_unik, nis, target_juz, tingkatan, target_ziyadah_mingguan, target_murajaah_mingguan"
+      )
       .eq("kode_unik", cleanCode)
       .eq("role", "santri")
       .maybeSingle();
@@ -129,7 +135,7 @@ export default async function SantriDetailPage({ params }: PageProps) {
     const { data: setoranList } = await supabase
       .from("setoran_hafalan")
       .select(
-        "id, jenis_setoran, nama_surah, juz, juz_selesai, ayat_mulai, ayat_selesai, nilai_kelancaran, nilai_tajwid, catatan, created_at"
+        "id, jenis_setoran, nama_surah, juz, juz_selesai, ayat_mulai, ayat_selesai, nilai_kelancaran, nilai_tajwid, catatan, tanggal_setoran, created_at"
       )
       .eq("santri_id", santri.id)
       .order("created_at", { ascending: false });
@@ -187,6 +193,13 @@ export default async function SantriDetailPage({ params }: PageProps) {
             </p>
           </div>
         </header>
+
+        <TargetMingguanCard
+          records={records}
+          targetZiyadah={santri.target_ziyadah_mingguan ?? 3}
+          targetMurajaah={santri.target_murajaah_mingguan ?? 2}
+          variant="light"
+        />
 
         <RingkasanBulananCard
           santriNama={santri.nama_lengkap}
