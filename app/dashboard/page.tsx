@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import { computeJuzProgress, getSantriLevel } from '@/src/utils/badgeCalculator';
+import { generateRandomKodeUnik } from '@/src/utils/kodeUnik';
 import {
   TINGKATAN_OPTIONS,
   type TingkatanKelas,
@@ -160,22 +161,9 @@ export default function AdminDashboardPage() {
   };
 
   // Helper Auto-Generate Kode Unik (aman + mudah dibaca di kartu)
-  // Contoh: SNT-K7M2P9QX — crypto random, tanpa huruf/angka yang mirip (0/O, 1/I)
-  const generateRandomKode = () => {
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const bytes = new Uint8Array(8);
-    crypto.getRandomValues(bytes);
-    let suffix = '';
-    for (let i = 0; i < bytes.length; i++) {
-      suffix += alphabet[bytes[i] % alphabet.length];
-    }
-    return `SNT-${suffix}`;
-  };
-
-  // Pastikan kode unik belum terpakai di database
   const generateUniqueKode = async () => {
     for (let attempt = 0; attempt < 8; attempt++) {
-      const kode = generateRandomKode();
+      const kode = generateRandomKodeUnik();
       const { data, error } = await supabase
         .from('profiles')
         .select('id')
@@ -190,12 +178,7 @@ export default function AdminDashboardPage() {
       if (!data) return kode;
     }
 
-    // Fallback sangat jarang: tambah 4 karakter lagi
-    const bytes = new Uint8Array(4);
-    crypto.getRandomValues(bytes);
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const extra = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
-    return `SNT-${Date.now().toString(36).toUpperCase()}${extra}`.slice(0, 16);
+    return `${generateRandomKodeUnik()}X`;
   };
 
   // Open Modal Handler

@@ -25,6 +25,7 @@ import {
   User,
   X,
   Check,
+  Printer,
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -416,8 +417,18 @@ export default function KelolaSantriPage() {
                 Kelola Data Santri
               </h1>
               <p className="text-sm text-slate-400 mt-1">
-                Edit profil, koreksi setoran, dan tandai juz selesai belakangan lewat peta juz.
+                Edit profil, koreksi setoran, tandai juz selesai, dan cetak ulang kartu PIN.
               </p>
+            </div>
+            <div className="flex flex-wrap gap-2 print:hidden">
+              <button
+                type="button"
+                onClick={() => router.push(`/dashboard/cetak-kartu?santri_id=${santriId}`)}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Cetak Ulang Kartu
+              </button>
             </div>
           </div>
 
