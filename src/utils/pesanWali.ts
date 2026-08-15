@@ -102,6 +102,41 @@ export function buildWhatsAppClickToChatUrl(
   return `https://wa.me/${phone}?text=${encodeURIComponent(pesan)}`;
 }
 
+export type PesanSppWaliInput = {
+  namaSantri: string;
+  noWaWali?: string | null;
+  periodeLabel: string;
+  nominal: number;
+  formatNominal: (n: number) => string;
+};
+
+/**
+ * Pengingat SPP yang belum lunas — nada sopan & islami (bukan penagihan kasar).
+ * Pesan dibuka lewat wa.me; admin tetap menekan Kirim di WhatsApp.
+ */
+export function buildPesanSppWali(input: PesanSppWaliInput): string {
+  const nominal = input.formatNominal(input.nominal);
+  return [
+    `Assalamu'alaikum warahmatullahi wabarakatuh.`,
+    ``,
+    `Yth. Bapak/Ibu Wali Santri *${input.namaSantri}*`,
+    ``,
+    `Semoga Bapak/Ibu senantiasa dalam lindungan Allah SWT, diberikan kesehatan, kelancaran rezeki, dan kemudahan dalam segala urusan. Aamiin.`,
+    ``,
+    `Dengan penuh hormat, kami ingin mengingatkan bahwa *SPP bulanan* ananda *${input.namaSantri}* untuk periode *${input.periodeLabel}* sebesar *${nominal}* masih tercatat *belum lunas* di sistem kami.`,
+    ``,
+    `Mohon kiranya Bapak/Ibu berkenan menunaikannya apabila berkenan dan mampu. Semoga infak pendidikan ini menjadi amal jariyah dan keberkahan bagi keluarga.`,
+    ``,
+    `Apabila SPP sudah dibayarkan, mohon abaikan pesan ini atau sampaikan konfirmasi kepada kami agar data dapat kami perbarui.`,
+    ``,
+    `Jazakumullahu khairan katsiran.`,
+    `Barakallahu fiikum.`,
+    ``,
+    `Hormat kami,`,
+    `Tim Tahfizh Space`,
+  ].join('\n');
+}
+
 export async function copyTextToClipboard(text: string): Promise<boolean> {
   try {
     if (navigator.clipboard?.writeText) {
