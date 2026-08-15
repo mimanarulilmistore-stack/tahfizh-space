@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Megaphone,
   ClipboardCheck,
+  Wallet,
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -152,6 +153,18 @@ export default function HeaderAdmin() {
               Absensi
             </button>
 
+            <button
+              onClick={() => router.push('/dashboard/spp')}
+              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
+                isActive('/dashboard/spp')
+                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+              }`}
+            >
+              <Wallet className="w-4 h-4 text-amber-400" />
+              SPP
+            </button>
+
             {/* TOMBOL CETAK PIN */}
             <button
               onClick={() => router.push('/dashboard/cetak-kartu')}
@@ -269,6 +282,17 @@ export default function HeaderAdmin() {
           >
             <ClipboardCheck className="w-4 h-4 text-emerald-400" />
             Absensi
+          </button>
+
+          <button
+            onClick={() => {
+              router.push('/dashboard/spp');
+              setIsMobileMenuOpen(false);
+            }}
+            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
+          >
+            <Wallet className="w-4 h-4 text-amber-400" />
+            SPP Bulanan
           </button>
 
           <button
