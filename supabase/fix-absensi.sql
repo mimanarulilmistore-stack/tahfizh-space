@@ -1,4 +1,4 @@
--- Modul Absensi (kehadiran) santri per tingkatan untuk dashboard ustadz.
+-- Modul Absensi (kehadiran) santri untuk dashboard ustadz.
 -- Jalankan di: Supabase Dashboard → SQL Editor → Run
 --
 -- Satu baris = kehadiran satu santri pada satu tanggal.

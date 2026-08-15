@@ -54,6 +54,44 @@ function todayKey() {
   return new Date().toISOString().split('T')[0];
 }
 
+/** Ambil pesan error yang bisa dibaca manusia (termasuk error Supabase). */
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (err && typeof err === 'object' && 'message' in err) {
+    const msg = String((err as { message?: unknown }).message || '').trim();
+    if (msg) return msg;
+  }
+  return fallback;
+}
+
+/** Deteksi tabel absensi belum ada / belum dijalankan SQL-nya. */
+function isMissingAbsensiTable(err: unknown): boolean {
+  const code =
+    err && typeof err === 'object' && 'code' in err
+      ? String((err as { code?: unknown }).code || '')
+      : '';
+  const message = getErrorMessage(err, '').toLowerCase();
+  return (
+    code === '42P01' ||
+    code === 'PGRST205' ||
+    (/absensi_santri/.test(message) &&
+      /does not exist|not find|could not find|schema cache/i.test(message))
+  );
+}
+
+function pesanErrorAbsensi(err: unknown, mode: 'muat' | 'simpan'): string {
+  if (isMissingAbsensiTable(err)) {
+    return 'Tabel absensi belum siap di database. Buka Supabase → SQL Editor, jalankan file supabase/fix-absensi.sql, lalu muat ulang halaman ini.';
+  }
+  const detail = getErrorMessage(err, '');
+  if (mode === 'muat') {
+    return detail
+      ? `Gagal memuat data absensi: ${detail}`
+      : 'Gagal memuat data absensi tanggal ini.';
+  }
+  return detail || 'Gagal menyimpan absensi.';
+}
+
 export default function AbsensiPage() {
   const router = useRouter();
   const [loadingSession, setLoadingSession] = useState(true);
@@ -120,7 +158,7 @@ export default function AbsensiPage() {
       setDraft(next);
     } catch (err) {
       console.error('Load absensi error:', err);
-      setToast({ type: 'error', text: 'Gagal memuat data absensi tanggal ini.' });
+      setToast({ type: 'error', text: pesanErrorAbsensi(err, 'muat') });
     } finally {
       setLoadingAbsensi(false);
     }
@@ -231,9 +269,8 @@ export default function AbsensiPage() {
       loadAbsensi();
       setTimeout(() => setToast(null), 6000);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Gagal menyimpan absensi.';
-      setToast({ type: 'error', text: message });
+      console.error('Simpan absensi error:', err);
+      setToast({ type: 'error', text: pesanErrorAbsensi(err, 'simpan') });
     } finally {
       setIsSubmitting(false);
     }
@@ -273,9 +310,9 @@ export default function AbsensiPage() {
                 <ClipboardCheck className="w-4 h-4" />
                 Kehadiran Santri
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">Absensi per Tingkatan</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">Absensi</h1>
               <p className="text-slate-400 text-sm mt-1">
-                Tandai kehadiran santri per tanggal dan pantau rekap kehadiran untuk tiap tingkatan.
+                Tandai kehadiran santri per tanggal dan pantau rekap kehadiran.
               </p>
             </div>
           </div>
