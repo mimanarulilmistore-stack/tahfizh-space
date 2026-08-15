@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Megaphone,
+  ClipboardCheck,
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -139,6 +140,18 @@ export default function HeaderAdmin() {
               Input Massal
             </button>
 
+            <button
+              onClick={() => router.push('/dashboard/absensi')}
+              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
+                isActive('/dashboard/absensi')
+                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+              }`}
+            >
+              <ClipboardCheck className="w-4 h-4 text-emerald-400" />
+              Absensi
+            </button>
+
             {/* TOMBOL CETAK PIN */}
             <button
               onClick={() => router.push('/dashboard/cetak-kartu')}
@@ -245,6 +258,17 @@ export default function HeaderAdmin() {
           >
             <Layers className="w-4 h-4 text-sky-400" />
             Input Massal
+          </button>
+
+          <button
+            onClick={() => {
+              router.push('/dashboard/absensi');
+              setIsMobileMenuOpen(false);
+            }}
+            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
+          >
+            <ClipboardCheck className="w-4 h-4 text-emerald-400" />
+            Absensi
           </button>
 
           <button
