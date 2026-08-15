@@ -15,7 +15,16 @@ import {
 import {
   exportRaporIndividualExcel,
   exportRekapKelasExcel,
+  exportRekapAbsensiExcel,
 } from '@/src/utils/exportExcel';
+import {
+  STATUS_ABSENSI_OPTIONS,
+  type AbsensiRecord,
+  rekapAbsensiDariRecords,
+  tambahPersenHadir,
+  hitungRekapAbsensi,
+  normalizeStatusAbsensi,
+} from '@/src/utils/absensi';
 import {
   FileText,
   Printer,
@@ -27,6 +36,7 @@ import {
   Filter,
   AlertCircle,
   FileSpreadsheet,
+  ClipboardCheck,
 } from 'lucide-react';
 
 const supabase = getBrowserSupabase();
@@ -73,12 +83,16 @@ export default function LaporanDashboardPage() {
 
   const [loading, setLoading] = useState(true);
   const [loadingSetoran, setLoadingSetoran] = useState(false);
+  const [loadingAbsensi, setLoadingAbsensi] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [reportType, setReportType] = useState<'individual' | 'rekap'>('individual');
+  const [reportType, setReportType] = useState<'individual' | 'rekap' | 'absensi'>(
+    'individual'
+  );
 
   const [santriList, setSantriList] = useState<SantriProfile[]>([]);
   const [selectedSantriId, setSelectedSantriId] = useState('');
   const [setoranData, setSetoranData] = useState<SetoranRecord[]>([]);
+  const [absensiData, setAbsensiData] = useState<AbsensiRecord[]>([]);
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -147,6 +161,7 @@ export default function LaporanDashboardPage() {
 
   useEffect(() => {
     const fetchSetoran = async () => {
+      if (reportType === 'absensi') return;
       if (reportType === 'individual' && !selectedSantriId) {
         setSetoranData([]);
         return;
@@ -190,6 +205,48 @@ export default function LaporanDashboardPage() {
 
     if (!loading) fetchSetoran();
   }, [selectedSantriId, reportType, startDate, endDate, loading]);
+
+  useEffect(() => {
+    const fetchAbsensi = async () => {
+      if (reportType !== 'absensi') return;
+
+      setLoadingAbsensi(true);
+      setErrorMsg(null);
+
+      try {
+        let query = supabase
+          .from('absensi_santri')
+          .select('santri_id, status, tanggal, catatan')
+          .order('tanggal', { ascending: false });
+
+        if (startDate) query = query.gte('tanggal', startDate);
+        if (endDate) query = query.lte('tanggal', endDate);
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        setAbsensiData((data || []) as AbsensiRecord[]);
+      } catch (err: unknown) {
+        console.error('Error fetching absensi:', err);
+        const msg =
+          err && typeof err === 'object' && 'message' in err
+            ? String((err as { message?: unknown }).message || '')
+            : '';
+        if (/absensi_santri/i.test(msg) && /does not exist|not find|schema cache/i.test(msg)) {
+          setErrorMsg(
+            'Tabel absensi belum siap. Jalankan supabase/fix-absensi.sql di Supabase SQL Editor.'
+          );
+        } else {
+          setErrorMsg(msg || 'Gagal memuat data absensi.');
+        }
+        setAbsensiData([]);
+      } finally {
+        setLoadingAbsensi(false);
+      }
+    };
+
+    if (!loading) fetchAbsensi();
+  }, [reportType, startDate, endDate, loading]);
 
   const handlePrint = () => window.print();
 
@@ -255,8 +312,74 @@ export default function LaporanDashboardPage() {
     );
   }, [rekapRows]);
 
+  const absensiBySantriId = useMemo(() => {
+    const map = new Map<string, AbsensiRecord[]>();
+    for (const row of absensiData) {
+      const list = map.get(row.santri_id) || [];
+      list.push(row);
+      map.set(row.santri_id, list);
+    }
+    return map;
+  }, [absensiData]);
+
+  const rekapAbsensiPerSantri = useMemo(() => {
+    return filteredSantriList.map((santri) => {
+      const records = absensiBySantriId.get(santri.id) || [];
+      const rekap = rekapAbsensiDariRecords(records);
+      return { santri, rekap };
+    });
+  }, [filteredSantriList, absensiBySantriId]);
+
+  const rekapAbsensiPerTingkatan = useMemo(() => {
+    return TINGKATAN_OPTIONS.map((opt) => {
+      const anggota = filteredSantriList.filter(
+        (s) => normalizeTingkatan(s.tingkatan) === opt.value
+      );
+      const statuses = anggota.flatMap((s) =>
+        (absensiBySantriId.get(s.id) || []).map((r) => normalizeStatusAbsensi(r.status))
+      );
+      const rekap = tambahPersenHadir(hitungRekapAbsensi(statuses));
+      return { tingkatan: opt, jumlahSantri: anggota.length, rekap };
+    });
+  }, [filteredSantriList, absensiBySantriId]);
+
+  const isLoadingReport = reportType === 'absensi' ? loadingAbsensi : loadingSetoran;
+
   const handleExportExcel = () => {
     try {
+      if (reportType === 'absensi') {
+        exportRekapAbsensiExcel({
+          perSantri: rekapAbsensiPerSantri.map(({ santri, rekap }) => ({
+            nama: santri.nama_lengkap,
+            nis: santri.nis,
+            kode_unik: santri.kode_unik,
+            tingkatan: getTingkatanLabel(santri.tingkatan),
+            hadir: rekap.hadir,
+            sakit: rekap.sakit,
+            izin: rekap.izin,
+            alpha: rekap.alpha,
+            terisi: rekap.terisi,
+            persenHadir: rekap.persenHadir,
+          })),
+          perTingkatan: rekapAbsensiPerTingkatan.map(({ tingkatan, jumlahSantri, rekap }) => ({
+            tingkatan: tingkatan.label,
+            jumlahSantri,
+            hadir: rekap.hadir,
+            sakit: rekap.sakit,
+            izin: rekap.izin,
+            alpha: rekap.alpha,
+            terisi: rekap.terisi,
+            persenHadir: rekap.persenHadir,
+          })),
+          tingkatanFilterLabel:
+            tingkatanFilter === 'all' ? 'Semua' : getTingkatanLabel(tingkatanFilter),
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+          monthKey: monthKey || undefined,
+        });
+        return;
+      }
+
       if (reportType === 'individual') {
         if (!selectedSantri) {
           setErrorMsg('Pilih santri terlebih dahulu sebelum export.');
@@ -404,14 +527,15 @@ export default function LaporanDashboardPage() {
                   Laporan & Rapor Progress Santri
                 </h1>
                 <p className="text-xs text-slate-400 mt-1">
-                  Cetak PDF atau export Excel untuk rapor individual / rekap kelas sesuai filter aktif.
+                  Cetak PDF atau export Excel untuk rapor individual, rekap kelas, atau rekap
+                  absensi sesuai filter aktif.
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={handleExportExcel}
-                  disabled={loadingSetoran}
+                  disabled={isLoadingReport}
                   className="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:bg-slate-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-sky-950/40 flex items-center gap-2 text-sm"
                 >
                   <FileSpreadsheet className="w-4 h-4" />
@@ -419,7 +543,7 @@ export default function LaporanDashboardPage() {
                 </button>
                 <button
                   onClick={handlePrint}
-                  disabled={loadingSetoran}
+                  disabled={isLoadingReport}
                   className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-950/50 flex items-center gap-2 text-sm"
                 >
                   <Printer className="w-4 h-4" />
@@ -435,8 +559,8 @@ export default function LaporanDashboardPage() {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 w-full sm:w-auto">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 w-full lg:w-auto">
                 <button
                   onClick={() => setReportType('individual')}
                   className={`flex-1 sm:flex-none px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
@@ -446,7 +570,7 @@ export default function LaporanDashboardPage() {
                   }`}
                 >
                   <UserCheck className="w-4 h-4" />
-                  Rapor Santri (Individual)
+                  Rapor Santri
                 </button>
                 <button
                   onClick={() => setReportType('rekap')}
@@ -457,12 +581,23 @@ export default function LaporanDashboardPage() {
                   }`}
                 >
                   <Users className="w-4 h-4" />
-                  Rekapitulasi Kelas
+                  Rekap Kelas
+                </button>
+                <button
+                  onClick={() => setReportType('absensi')}
+                  className={`flex-1 sm:flex-none px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                    reportType === 'absensi'
+                      ? 'bg-emerald-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <ClipboardCheck className="w-4 h-4" />
+                  Rekap Absensi
                 </button>
               </div>
 
               {reportType === 'individual' && (
-                <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex items-center gap-3 w-full lg:w-auto">
                   <label className="text-xs text-slate-400 whitespace-nowrap font-medium">
                     Pilih Santri:
                   </label>
@@ -487,20 +622,22 @@ export default function LaporanDashboardPage() {
                 <Filter className="w-3.5 h-3.5 text-emerald-400" /> Filter:
               </span>
 
-              <div className="flex items-center gap-2">
-                <span className="text-slate-500">Jenis:</span>
-                <select
-                  value={jenisFilter}
-                  onChange={(e) =>
-                    setJenisFilter(e.target.value as 'all' | 'ziyadah' | 'murajaah')
-                  }
-                  className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                >
-                  <option value="all">Semua (Ziyadah + Murajaah)</option>
-                  <option value="ziyadah">Hanya Ziyadah</option>
-                  <option value="murajaah">Hanya Murajaah</option>
-                </select>
-              </div>
+              {reportType !== 'absensi' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500">Jenis:</span>
+                  <select
+                    value={jenisFilter}
+                    onChange={(e) =>
+                      setJenisFilter(e.target.value as 'all' | 'ziyadah' | 'murajaah')
+                    }
+                    className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="all">Semua (Ziyadah + Murajaah)</option>
+                    <option value="ziyadah">Hanya Ziyadah</option>
+                    <option value="murajaah">Hanya Murajaah</option>
+                  </select>
+                </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <span className="text-slate-500">Tingkatan:</span>
@@ -549,7 +686,11 @@ export default function LaporanDashboardPage() {
                   className={dateInputClass}
                 />
               </div>
-              {(startDate || endDate || monthKey || jenisFilter !== 'all' || tingkatanFilter !== 'all') && (
+              {(startDate ||
+                endDate ||
+                monthKey ||
+                (reportType !== 'absensi' && jenisFilter !== 'all') ||
+                tingkatanFilter !== 'all') && (
                 <button
                   onClick={() => {
                     setStartDate('');
@@ -563,7 +704,7 @@ export default function LaporanDashboardPage() {
                   Reset Filter
                 </button>
               )}
-              {loadingSetoran && (
+              {isLoadingReport && (
                 <span className="text-slate-500 flex items-center gap-1.5 ml-auto">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Memuat data...
                 </span>
@@ -587,7 +728,11 @@ export default function LaporanDashboardPage() {
               </div>
               <div className="text-right">
                 <span className="inline-block px-3 py-1 bg-slate-100 border border-slate-300 rounded text-xs font-bold font-mono text-slate-800">
-                  {reportType === 'individual' ? 'RAPOR SANTRI' : 'REKAPITULASI KELAS'}
+                  {reportType === 'individual'
+                    ? 'RAPOR SANTRI'
+                    : reportType === 'absensi'
+                      ? 'REKAP ABSENSI'
+                      : 'REKAPITULASI KELAS'}
                 </span>
                 <p className="text-[10px] text-slate-500 mt-1">
                   Dicetak:{' '}
@@ -723,7 +868,141 @@ export default function LaporanDashboardPage() {
               </p>
             )}
 
-            {/* REKAP */}
+            {/* REKAP ABSENSI */}
+            {reportType === 'absensi' && (
+              <div className="space-y-6">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex flex-wrap gap-3 justify-between items-center">
+                  <span className="font-bold text-slate-700">
+                    Total Santri: {filteredSantriList.length}
+                  </span>
+                  <span className="text-slate-600">
+                    Periode:{' '}
+                    {monthKey
+                      ? `Bulan ${monthKey}`
+                      : startDate || endDate
+                        ? `${startDate || '…'} s/d ${endDate || '…'}`
+                        : 'Semua tanggal'}
+                  </span>
+                  <span className="text-slate-600">
+                    Filter tingkatan:{' '}
+                    {tingkatanFilter === 'all' ? 'Semua' : getTingkatanLabel(tingkatanFilter)}
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-3">
+                    Rekap per Tingkatan
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {rekapAbsensiPerTingkatan.map(({ tingkatan, jumlahSantri, rekap }) => (
+                      <div
+                        key={tingkatan.value}
+                        className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-bold text-slate-900">{tingkatan.label}</p>
+                          <span className="text-[10px] text-slate-500">
+                            {jumlahSantri} santri · {rekap.persenHadir}% hadir
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5 text-center">
+                          {STATUS_ABSENSI_OPTIONS.map((s) => (
+                            <div
+                              key={s.value}
+                              className="rounded-lg border border-slate-200 bg-white py-1.5"
+                              title={s.label}
+                            >
+                              <p className="text-base font-extrabold leading-none text-slate-900">
+                                {rekap[s.value]}
+                              </p>
+                              <p className="text-[9px] font-semibold mt-1 text-slate-500">
+                                {s.short}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-3">
+                    Rekap per Santri
+                  </h3>
+                  {filteredSantriList.length === 0 ? (
+                    <p className="text-center text-sm text-slate-500 py-8">
+                      Tidak ada santri pada filter tingkatan ini.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100 border-y border-slate-300 text-slate-700 font-bold">
+                            <th className="py-2.5 px-3">No</th>
+                            <th className="py-2.5 px-3">Nama Santri</th>
+                            <th className="py-2.5 px-3">Tingkatan</th>
+                            <th className="py-2.5 px-3">NIS / Kode</th>
+                            <th className="py-2.5 px-3 text-center">Hadir</th>
+                            <th className="py-2.5 px-3 text-center">Sakit</th>
+                            <th className="py-2.5 px-3 text-center">Izin</th>
+                            <th className="py-2.5 px-3 text-center">Alpha</th>
+                            <th className="py-2.5 px-3 text-center">Hari Terisi</th>
+                            <th className="py-2.5 px-3 text-center">% Hadir</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {rekapAbsensiPerSantri.map(({ santri, rekap }, idx) => (
+                            <tr key={santri.id} className="hover:bg-slate-50">
+                              <td className="py-2.5 px-3 font-mono text-slate-500">{idx + 1}</td>
+                              <td className="py-2.5 px-3 font-bold text-slate-900">
+                                {santri.nama_lengkap}
+                              </td>
+                              <td className="py-2.5 px-3 font-semibold text-slate-700">
+                                {getTingkatanLabel(santri.tingkatan)}
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-slate-600">
+                                {santri.nis || '-'} ({santri.kode_unik})
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-bold text-emerald-800">
+                                {rekap.hadir}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-bold text-amber-800">
+                                {rekap.sakit}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-bold text-sky-800">
+                                {rekap.izin}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-bold text-rose-800">
+                                {rekap.alpha}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-semibold text-slate-800">
+                                {rekap.terisi}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-bold text-slate-900">
+                                {rekap.terisi > 0 ? `${rekap.persenHadir}%` : '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-10 mt-8 flex justify-end text-center text-xs break-inside-avoid">
+                  <div className="w-64">
+                    <p className="text-slate-500">Koordinator Program Tahfizh,</p>
+                    <div className="h-16" />
+                    <p className="font-bold text-slate-900 underline">
+                      ( ............................................ )
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* REKAP SETORAN */}
             {reportType === 'rekap' && (
               <div className="space-y-6">
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex flex-wrap gap-3 justify-between items-center">
