@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import SantriBadgesGrid from "@/components/SantriBadgesGrid";
 import JuzMap from "@/components/JuzMap";
 import RingkasanBulananCard from "@/components/RingkasanBulanan";
+import RekapAbsensiWaliCard from "@/components/RekapAbsensiWaliCard";
 import TargetMingguanCard from "@/components/TargetMingguanCard";
 import PortalExitButton from "@/components/PortalExitButton";
 import Link from "next/link";
@@ -38,6 +39,12 @@ type SetoranPublic = {
   catatan: string | null;
   tanggal_setoran?: string | null;
   created_at: string;
+};
+
+type AbsensiPublic = {
+  tanggal: string;
+  status: string;
+  catatan: string | null;
 };
 
 export default async function SantriDetailPage({ params }: PageProps) {
@@ -123,6 +130,7 @@ export default async function SantriDetailPage({ params }: PageProps) {
   }
 
   let records: SetoranPublic[] = [];
+  let absensiRecords: AbsensiPublic[] = [];
 
   const { data: rpcSetoran, error: rpcSetoranError } = await supabase.rpc(
     "get_setoran_by_kode",
@@ -141,6 +149,20 @@ export default async function SantriDetailPage({ params }: PageProps) {
       .order("created_at", { ascending: false });
     records = (setoranList || []) as SetoranPublic[];
   }
+
+  const { data: rpcAbsensi, error: rpcAbsensiError } = await supabase.rpc(
+    "get_absensi_by_kode",
+    { p_kode: cleanCode }
+  );
+
+  if (!rpcAbsensiError && Array.isArray(rpcAbsensi)) {
+    absensiRecords = (rpcAbsensi as AbsensiPublic[]).map((row) => ({
+      tanggal: String(row.tanggal || "").slice(0, 10),
+      status: row.status,
+      catatan: row.catatan,
+    }));
+  }
+  // Tanpa RPC, anon tidak boleh baca absensi_santri (privasi). Biarkan kosong.
 
   const badgeSetoran = records.map((item) => ({
     id: item.id,
@@ -206,6 +228,12 @@ export default async function SantriDetailPage({ params }: PageProps) {
           kodeUnik={santri.kode_unik}
           tingkatanLabel={getTingkatanLabel(santri.tingkatan)}
           records={records}
+          variant="light"
+        />
+
+        <RekapAbsensiWaliCard
+          santriNama={santri.nama_lengkap}
+          records={absensiRecords}
           variant="light"
         />
 
