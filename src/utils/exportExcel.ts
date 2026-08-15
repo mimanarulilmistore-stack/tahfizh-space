@@ -178,3 +178,96 @@ export function exportRekapKelasExcel(options: {
   const tingkat = (tingkatanFilterLabel || 'semua').toLowerCase().replace(/\s+/g, '-');
   downloadWorkbook(wb, `rekap-kelas-${tingkat}-${periode}.xlsx`);
 }
+
+type AbsensiSantriRekapRow = {
+  nama: string;
+  nis?: string | null;
+  kode_unik: string;
+  tingkatan: string;
+  hadir: number;
+  sakit: number;
+  izin: number;
+  alpha: number;
+  terisi: number;
+  persenHadir: number;
+};
+
+type AbsensiTingkatanRekapRow = {
+  tingkatan: string;
+  jumlahSantri: number;
+  hadir: number;
+  sakit: number;
+  izin: number;
+  alpha: number;
+  terisi: number;
+  persenHadir: number;
+};
+
+export function exportRekapAbsensiExcel(options: {
+  perSantri: AbsensiSantriRekapRow[];
+  perTingkatan: AbsensiTingkatanRekapRow[];
+  tingkatanFilterLabel?: string;
+  startDate?: string;
+  endDate?: string;
+  monthKey?: string;
+}) {
+  const {
+    perSantri,
+    perTingkatan,
+    tingkatanFilterLabel,
+    startDate,
+    endDate,
+    monthKey,
+  } = options;
+
+  const wb = XLSX.utils.book_new();
+
+  const totalHadir = perSantri.reduce((a, r) => a + r.hadir, 0);
+  const totalTerisi = perSantri.reduce((a, r) => a + r.terisi, 0);
+  const persen =
+    totalTerisi > 0 ? Math.round((totalHadir / totalTerisi) * 1000) / 10 : 0;
+
+  const meta = [
+    { Field: 'Jenis Laporan', Nilai: 'Rekap Absensi' },
+    { Field: 'Periode', Nilai: periodeLabel(startDate, endDate, monthKey) },
+    { Field: 'Filter Tingkatan', Nilai: tingkatanFilterLabel || 'Semua' },
+    { Field: 'Jumlah Santri', Nilai: perSantri.length },
+    { Field: 'Total Hari Terisi', Nilai: totalTerisi },
+    { Field: 'Total Hadir', Nilai: totalHadir },
+    { Field: 'Persen Hadir (keseluruhan)', Nilai: `${persen}%` },
+    { Field: 'Diekspor', Nilai: new Date().toLocaleString('id-ID') },
+  ];
+
+  const tingkatanSheet = perTingkatan.map((row) => ({
+    Tingkatan: row.tingkatan,
+    Jumlah_Santri: row.jumlahSantri,
+    Hadir: row.hadir,
+    Sakit: row.sakit,
+    Izin: row.izin,
+    Alpha: row.alpha,
+    Hari_Terisi: row.terisi,
+    Persen_Hadir: `${row.persenHadir}%`,
+  }));
+
+  const santriSheet = perSantri.map((row, idx) => ({
+    No: idx + 1,
+    Nama: row.nama,
+    NIS: row.nis || '',
+    Kode_PIN: row.kode_unik,
+    Tingkatan: row.tingkatan,
+    Hadir: row.hadir,
+    Sakit: row.sakit,
+    Izin: row.izin,
+    Alpha: row.alpha,
+    Hari_Terisi: row.terisi,
+    Persen_Hadir: `${row.persenHadir}%`,
+  }));
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(meta), 'Ringkasan');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tingkatanSheet), 'Per Tingkatan');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(santriSheet), 'Per Santri');
+
+  const periode = monthKey || startDate || 'semua';
+  const tingkat = (tingkatanFilterLabel || 'semua').toLowerCase().replace(/\s+/g, '-');
+  downloadWorkbook(wb, `rekap-absensi-${tingkat}-${periode}.xlsx`);
+}

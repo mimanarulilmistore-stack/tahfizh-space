@@ -68,6 +68,18 @@ export function getStatusAbsensiBadgeClass(raw: unknown): string {
 
 export type RekapAbsensi = Record<StatusAbsensi, number> & { total: number; terisi: number };
 
+export type AbsensiRecord = {
+  santri_id: string;
+  status: string;
+  tanggal: string;
+  catatan?: string | null;
+};
+
+export type RekapAbsensiDenganPersen = RekapAbsensi & {
+  /** Persentase hadir dari hari yang sudah diisi (0–100). */
+  persenHadir: number;
+};
+
 /** Hitung rekap jumlah tiap status dari daftar status kehadiran. */
 export function hitungRekapAbsensi(statuses: Array<StatusAbsensi | null>): RekapAbsensi {
   const rekap: RekapAbsensi = {
@@ -84,4 +96,25 @@ export function hitungRekapAbsensi(statuses: Array<StatusAbsensi | null>): Rekap
     rekap.terisi += 1;
   }
   return rekap;
+}
+
+/** Persentase hadir = Hadir ÷ hari terisi × 100 (dibulatkan 1 desimal). */
+export function hitungPersenHadir(hadir: number, terisi: number): number {
+  if (terisi <= 0) return 0;
+  return Math.round((hadir / terisi) * 1000) / 10;
+}
+
+export function tambahPersenHadir(rekap: RekapAbsensi): RekapAbsensiDenganPersen {
+  return {
+    ...rekap,
+    persenHadir: hitungPersenHadir(rekap.hadir, rekap.terisi),
+  };
+}
+
+/** Rekap absensi satu santri dari baris absensi periode terpilih. */
+export function rekapAbsensiDariRecords(
+  records: AbsensiRecord[]
+): RekapAbsensiDenganPersen {
+  const statuses = records.map((r) => normalizeStatusAbsensi(r.status));
+  return tambahPersenHadir(hitungRekapAbsensi(statuses));
 }
