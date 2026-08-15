@@ -83,11 +83,20 @@ export function exportRaporIndividualExcel(options: {
     juzSelesai: number;
     level: string;
   };
+  absensi?: {
+    hadir: number;
+    sakit: number;
+    izin: number;
+    alpha: number;
+    terisi: number;
+    persenHadir: number;
+    rincian?: Array<{ tanggal: string; status: string; catatan?: string | null }>;
+  };
   startDate?: string;
   endDate?: string;
   monthKey?: string;
 }) {
-  const { santri, setoran, ringkasan, startDate, endDate, monthKey } = options;
+  const { santri, setoran, ringkasan, absensi, startDate, endDate, monthKey } = options;
   const wb = XLSX.utils.book_new();
 
   const meta = [
@@ -102,6 +111,16 @@ export function exportRaporIndividualExcel(options: {
     { Field: 'Murajaah', Nilai: ringkasan.murajaah },
     { Field: 'Juz Selesai', Nilai: ringkasan.juzSelesai },
     { Field: 'Level', Nilai: ringkasan.level },
+    ...(absensi
+      ? [
+          { Field: 'Absensi Hadir', Nilai: absensi.hadir },
+          { Field: 'Absensi Sakit', Nilai: absensi.sakit },
+          { Field: 'Absensi Izin', Nilai: absensi.izin },
+          { Field: 'Absensi Alpha', Nilai: absensi.alpha },
+          { Field: 'Absensi Hari Terisi', Nilai: absensi.terisi },
+          { Field: 'Absensi % Hadir', Nilai: `${absensi.persenHadir}%` },
+        ]
+      : []),
     { Field: 'Diekspor', Nilai: new Date().toLocaleString('id-ID') },
   ];
 
@@ -111,6 +130,21 @@ export function exportRaporIndividualExcel(options: {
     XLSX.utils.json_to_sheet(mapSetoranSheet(setoran)),
     'Rincian Setoran'
   );
+
+  if (absensi?.rincian && absensi.rincian.length > 0) {
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(
+        absensi.rincian.map((row, idx) => ({
+          No: idx + 1,
+          Tanggal: row.tanggal,
+          Status: row.status,
+          Catatan: row.catatan || '',
+        }))
+      ),
+      'Rincian Absensi'
+    );
+  }
 
   const safeName = santri.nama_lengkap.replace(/[^\w\-]+/g, '_').slice(0, 40);
   const periode = monthKey || startDate || 'semua';

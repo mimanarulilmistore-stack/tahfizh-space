@@ -24,6 +24,7 @@ import {
   tambahPersenHadir,
   hitungRekapAbsensi,
   normalizeStatusAbsensi,
+  getStatusAbsensiLabel,
 } from '@/src/utils/absensi';
 import {
   FileText,
@@ -208,10 +209,15 @@ export default function LaporanDashboardPage() {
 
   useEffect(() => {
     const fetchAbsensi = async () => {
-      if (reportType !== 'absensi') return;
+      if (reportType !== 'absensi' && reportType !== 'individual') return;
+      if (reportType === 'individual' && !selectedSantriId) {
+        setAbsensiData([]);
+        return;
+      }
 
       setLoadingAbsensi(true);
-      setErrorMsg(null);
+      // Jangan timpa error setoran saat mode individual; kosongkan error khusus absensi lewat pesan gabungan di bawah.
+      if (reportType === 'absensi') setErrorMsg(null);
 
       try {
         let query = supabase
@@ -219,6 +225,9 @@ export default function LaporanDashboardPage() {
           .select('santri_id, status, tanggal, catatan')
           .order('tanggal', { ascending: false });
 
+        if (reportType === 'individual' && selectedSantriId) {
+          query = query.eq('santri_id', selectedSantriId);
+        }
         if (startDate) query = query.gte('tanggal', startDate);
         if (endDate) query = query.lte('tanggal', endDate);
 
@@ -236,7 +245,7 @@ export default function LaporanDashboardPage() {
           setErrorMsg(
             'Tabel absensi belum siap. Jalankan supabase/fix-absensi.sql di Supabase SQL Editor.'
           );
-        } else {
+        } else if (reportType === 'absensi') {
           setErrorMsg(msg || 'Gagal memuat data absensi.');
         }
         setAbsensiData([]);
@@ -246,7 +255,7 @@ export default function LaporanDashboardPage() {
     };
 
     if (!loading) fetchAbsensi();
-  }, [reportType, startDate, endDate, loading]);
+  }, [reportType, selectedSantriId, startDate, endDate, loading]);
 
   const handlePrint = () => window.print();
 
@@ -343,7 +352,21 @@ export default function LaporanDashboardPage() {
     });
   }, [filteredSantriList, absensiBySantriId]);
 
-  const isLoadingReport = reportType === 'absensi' ? loadingAbsensi : loadingSetoran;
+  const isLoadingReport =
+    reportType === 'absensi'
+      ? loadingAbsensi
+      : reportType === 'individual'
+        ? loadingSetoran || loadingAbsensi
+        : loadingSetoran;
+
+  const individualAbsensiRekap = useMemo(() => {
+    if (!selectedSantriId) return null;
+    const records = absensiData.filter((r) => r.santri_id === selectedSantriId);
+    return {
+      records,
+      rekap: rekapAbsensiDariRecords(records),
+    };
+  }, [absensiData, selectedSantriId]);
 
   const handleExportExcel = () => {
     try {
@@ -402,6 +425,21 @@ export default function LaporanDashboardPage() {
             juzSelesai: individualProgress.juzSelesaiCount,
             level: individualLevel.label,
           },
+          absensi: individualAbsensiRekap
+            ? {
+                hadir: individualAbsensiRekap.rekap.hadir,
+                sakit: individualAbsensiRekap.rekap.sakit,
+                izin: individualAbsensiRekap.rekap.izin,
+                alpha: individualAbsensiRekap.rekap.alpha,
+                terisi: individualAbsensiRekap.rekap.terisi,
+                persenHadir: individualAbsensiRekap.rekap.persenHadir,
+                rincian: individualAbsensiRekap.records.map((r) => ({
+                  tanggal: r.tanggal,
+                  status: r.status,
+                  catatan: r.catatan ?? null,
+                })),
+              }
+            : undefined,
           startDate: startDate || undefined,
           endDate: endDate || undefined,
           monthKey: monthKey || undefined,
@@ -805,6 +843,71 @@ export default function LaporanDashboardPage() {
                     </p>
                   </div>
                 </div>
+
+                {individualAbsensiRekap && (
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                      <ClipboardCheck className="w-3.5 h-3.5" />
+                      Kehadiran (Absensi)
+                      {individualAbsensiRekap.rekap.terisi > 0
+                        ? ` · ${individualAbsensiRekap.rekap.persenHadir}% hadir`
+                        : ''}
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+                      {STATUS_ABSENSI_OPTIONS.map((s) => (
+                        <div
+                          key={s.value}
+                          className="p-3 bg-slate-50 border border-slate-200 rounded-lg"
+                        >
+                          <p className="text-[11px] text-slate-500 font-semibold">{s.label}</p>
+                          <p className="text-lg font-black text-slate-900 mt-0.5">
+                            {individualAbsensiRekap.rekap[s.value]}
+                          </p>
+                        </div>
+                      ))}
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                        <p className="text-[11px] text-emerald-700 font-semibold">% Hadir</p>
+                        <p className="text-lg font-black text-emerald-800 mt-0.5">
+                          {individualAbsensiRekap.rekap.terisi > 0
+                            ? `${individualAbsensiRekap.rekap.persenHadir}%`
+                            : '-'}
+                        </p>
+                      </div>
+                    </div>
+                    {individualAbsensiRekap.records.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic">
+                        Belum ada catatan absensi pada periode ini.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-slate-100 border-y border-slate-300 text-slate-700 font-bold">
+                              <th className="py-2 px-3">Tanggal</th>
+                              <th className="py-2 px-3">Status</th>
+                              <th className="py-2 px-3">Catatan</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {individualAbsensiRekap.records.map((row) => (
+                              <tr key={`${row.tanggal}-${row.status}`} className="hover:bg-slate-50">
+                                <td className="py-2 px-3 whitespace-nowrap font-medium">
+                                  {row.tanggal}
+                                </td>
+                                <td className="py-2 px-3 font-bold text-slate-800">
+                                  {getStatusAbsensiLabel(row.status)}
+                                </td>
+                                <td className="py-2 px-3 italic text-slate-600">
+                                  {row.catatan || '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <JuzMap
                   completedJuz={individualProgress.juzSelesaiList}

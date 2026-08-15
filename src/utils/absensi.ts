@@ -118,3 +118,17 @@ export function rekapAbsensiDariRecords(
   const statuses = records.map((r) => normalizeStatusAbsensi(r.status));
   return tambahPersenHadir(hitungRekapAbsensi(statuses));
 }
+
+function pad2(n: number) {
+  return String(n).padStart(2, '0');
+}
+
+/** Filter baris absensi ke bulan tertentu (year + month 1–12). */
+export function filterAbsensiByYearMonth(
+  records: Array<Pick<AbsensiRecord, 'tanggal' | 'status' | 'catatan'> & { santri_id?: string }>,
+  year: number,
+  month: number
+) {
+  const prefix = `${year}-${pad2(month)}`;
+  return records.filter((r) => String(r.tanggal || '').startsWith(prefix));
+}
