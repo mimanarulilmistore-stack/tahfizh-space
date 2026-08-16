@@ -755,10 +755,10 @@ export default function LaporanDashboardPage() {
             <div className="border-b-2 border-black pb-4 mb-6 flex items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black tracking-wider uppercase text-slate-900">
-                  TAHFIZH SPACE
+                  Tahfizh Manarul Ilmi
                 </h1>
                 <p className="text-xs text-slate-600 font-medium">
-                  Lembaga Pendidikan Tahfizh Al-Qur&apos;an Modern & Terpadu
+                  Lembaga Pendidikan Tahfizh Al-Qur&apos;an
                 </p>
                 <p className="text-[10px] text-slate-500 mt-0.5">
                   Sistem Informasi & Mutaba&apos;ah Perkembangan Hafalan Santri

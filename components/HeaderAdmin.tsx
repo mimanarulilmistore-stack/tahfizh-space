@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getBrowserSupabase } from '@/src/lib/supabase';
+import BrandLogo from '@/components/BrandLogo';
+import { BRAND_NAME } from '@/src/utils/brand';
 import { 
-  ShieldCheck, 
   LayoutDashboard, 
   QrCode, 
   FileText, 
@@ -90,12 +91,10 @@ export default function HeaderAdmin() {
             onClick={() => router.push('/dashboard')}
             className="flex items-center gap-2.5 cursor-pointer group"
           >
-            <div className="w-9 h-9 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500/20 transition-all">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
+            <BrandLogo size="sm" />
             <div>
               <h1 className="text-sm font-bold text-white tracking-wide leading-tight">
-                TAHFIZH SPACE
+                {BRAND_NAME}
               </h1>
               <p className="text-[10px] text-emerald-400 font-mono font-medium">
                 Admin Panel
