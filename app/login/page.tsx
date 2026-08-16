@@ -165,7 +165,7 @@ function LoginContent() {
         
         <div className="text-center space-y-3">
           <div className="flex justify-center">
-            <BrandLogo size="lg" />
+            <BrandLogo size="lg" tone="onDark" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             {BRAND_NAME}

@@ -36,7 +36,7 @@ export default function PortalPinPage() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-3">
           <div className="flex justify-center">
-            <BrandLogo size="md" />
+            <BrandLogo size="md" tone="onDark" />
           </div>
           <div className="text-emerald-400 font-bold text-sm tracking-wide">
             {BRAND_NAME}

@@ -5,9 +5,11 @@ import RingkasanBulananCard from "@/components/RingkasanBulanan";
 import RekapAbsensiWaliCard from "@/components/RekapAbsensiWaliCard";
 import TargetMingguanCard from "@/components/TargetMingguanCard";
 import PortalExitButton from "@/components/PortalExitButton";
+import BrandLogo from "@/components/BrandLogo";
 import Link from "next/link";
 import { computeJuzProgress, getSantriLevel } from "@/src/utils/badgeCalculator";
 import { getTingkatanLabel } from "@/src/utils/tingkatan";
+import { BRAND_NAME } from "@/src/utils/brand";
 
 interface PageProps {
   params: Promise<{
@@ -185,6 +187,12 @@ export default async function SantriDetailPage({ params }: PageProps) {
 
         <header className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm dark:border-emerald-900/30 dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
           <div>
+            <div className="flex items-center gap-2.5 mb-3">
+              <BrandLogo size="sm" tone="onLight" />
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                {BRAND_NAME}
+              </span>
+            </div>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 mb-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Portal Khusus Wali
