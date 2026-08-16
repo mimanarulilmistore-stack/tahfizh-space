@@ -1,5 +1,9 @@
-import MioAcademyMark from '@/components/MioAcademyMark';
-import { BRAND_NAME } from '@/src/utils/brand';
+import Image from 'next/image';
+import {
+  BRAND_LOGO_ON_DARK,
+  BRAND_LOGO_ON_LIGHT,
+  BRAND_NAME,
+} from '@/src/utils/brand';
 
 type BrandLogoProps = {
   /** sm = header sempit, md = login/portal, lg = hero */
@@ -19,9 +23,9 @@ type BrandLogoProps = {
 };
 
 const SIZE_MAP = {
-  sm: { box: 'h-9 w-9', svg: 'h-8 w-8' },
-  md: { box: 'h-16 w-16', svg: 'h-14 w-14' },
-  lg: { box: 'h-24 w-24', svg: 'h-[5.5rem] w-[5.5rem]' },
+  sm: { box: 'h-9 w-9', px: 36 },
+  md: { box: 'h-16 w-16', px: 64 },
+  lg: { box: 'h-24 w-24', px: 96 },
 } as const;
 
 export default function BrandLogo({
@@ -35,10 +39,7 @@ export default function BrandLogo({
   const s = SIZE_MAP[size];
   const isStacked = layout === 'stacked';
   const onDark = tone === 'onDark';
-
-  const boxBg = onDark
-    ? 'bg-slate-900/80 border-slate-700/70'
-    : 'bg-white border-slate-200 shadow-sm';
+  const src = onDark ? BRAND_LOGO_ON_DARK : BRAND_LOGO_ON_LIGHT;
 
   const defaultNameClass = onDark
     ? 'text-white'
@@ -50,10 +51,15 @@ export default function BrandLogo({
         isStacked ? 'flex-col items-center gap-2' : 'items-center gap-2.5'
       } ${className}`}
     >
-      <div
-        className={`${s.box} relative shrink-0 overflow-hidden rounded-xl border ${boxBg} flex items-center justify-center p-1`}
-      >
-        <MioAcademyMark tone={tone} className={s.svg} />
+      <div className={`${s.box} relative shrink-0 overflow-hidden`}>
+        <Image
+          src={src}
+          alt={`Logo ${BRAND_NAME}`}
+          width={s.px}
+          height={s.px}
+          className="h-full w-full object-contain"
+          priority={size !== 'sm'}
+        />
       </div>
       {showName && (
         <span

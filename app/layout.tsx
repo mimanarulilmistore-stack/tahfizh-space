@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   description:
     "Sistem Mutaba'ah & Manajemen Hafalan Al-Qur'an — Tahfizh Manarul Ilmi",
   icons: {
-    icon: "/logo-mio-academy.png",
-    apple: "/logo-mio-academy.png",
+    icon: "/logo-mio-academy-on-light.png",
+    apple: "/logo-mio-academy-on-light.png",
   },
 };
 
