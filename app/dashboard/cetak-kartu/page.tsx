@@ -469,7 +469,7 @@ function CetakKartuPinContent() {
                         <div>
                           <div className="flex items-center gap-1.5 text-emerald-400 print:text-emerald-800 font-extrabold text-[11px] tracking-wider uppercase">
                             <ShieldCheck className="w-3.5 h-3.5" />
-                            TAHFIZH SPACE
+                            Tahfizh Manarul Ilmi
                           </div>
                           <p className="text-[9px] text-slate-400 print:text-slate-600 font-medium">
                             Kartu Akses Pantau Wali Santri

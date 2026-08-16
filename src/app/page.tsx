@@ -9,7 +9,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center">
           <div className="flex items-center gap-2 font-bold text-xl text-emerald-600 dark:text-emerald-400">
             <BookOpen className="w-6 h-6" />
-            <span>TahfizhSpace</span>
+            <span>Tahfizh Manarul Ilmi</span>
           </div>
         </div>
       </header>
@@ -75,7 +75,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-500">
-        <p>&copy; {new Date().getFullYear()} TahfizhSpace &bull; Sistem Mutaba&apos;ah &amp; Manajemen Hafalan Al-Qur&apos;an</p>
+        <p>&copy; {new Date().getFullYear()} Tahfizh Manarul Ilmi &bull; Sistem Mutaba&apos;ah &amp; Manajemen Hafalan Al-Qur&apos;an</p>
       </footer>
     </div>
   );

@@ -6,7 +6,6 @@ import { getBrowserSupabase } from '@/src/lib/supabase';
 import { 
   Lock, 
   Mail, 
-  Sparkles, 
   ArrowRight, 
   AlertCircle, 
   RefreshCw, 
@@ -16,6 +15,8 @@ import {
   Send
 } from 'lucide-react';
 import { Suspense } from 'react';
+import BrandLogo from '@/components/BrandLogo';
+import { BRAND_NAME } from '@/src/utils/brand';
 
 const supabase = getBrowserSupabase();
 
@@ -162,14 +163,16 @@ function LoginContent() {
 
       <div className="w-full max-w-md space-y-6">
         
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-950/80 border border-emerald-800/80 rounded-full text-emerald-400 text-xs font-semibold tracking-wide">
-            <Sparkles className="w-3.5 h-3.5" />
-            Portal Pengampu Tahfizh
+        <div className="text-center space-y-3">
+          <div className="flex justify-center">
+            <BrandLogo size="lg" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Mutaba&apos;ah Santri
+            {BRAND_NAME}
           </h1>
+          <p className="text-xs sm:text-sm text-emerald-400 font-semibold">
+            Portal Pengampu · Mutaba&apos;ah Santri
+          </p>
           <p className="text-xs sm:text-sm text-slate-400 max-w-xs mx-auto">
             Masuk dengan akun Ustadz / Pengelola untuk mengelola pencatatan hafalan.
           </p>

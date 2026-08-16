@@ -3,7 +3,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Hash, ArrowRight, BookOpen, AlertCircle, RefreshCw } from 'lucide-react';
+import { Hash, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
+import BrandLogo from '@/components/BrandLogo';
+import { BRAND_NAME } from '@/src/utils/brand';
 
 /**
  * Portal wali: hanya input PIN → redirect ke /santri/{kode}.
@@ -32,10 +34,12 @@ export default function PortalPinPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 font-sans">
       <div className="w-full max-w-md space-y-6">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 text-emerald-400 font-bold text-lg">
-            <BookOpen className="w-5 h-5" />
-            TahfizhSpace
+        <div className="text-center space-y-3">
+          <div className="flex justify-center">
+            <BrandLogo size="md" />
+          </div>
+          <div className="text-emerald-400 font-bold text-sm tracking-wide">
+            {BRAND_NAME}
           </div>
           <h1 className="text-2xl font-extrabold text-white">Portal Wali Santri</h1>
           <p className="text-sm text-slate-400">

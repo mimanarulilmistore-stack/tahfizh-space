@@ -87,7 +87,7 @@ export function buildPesanSetoranWali(input: PesanSetoranWaliInput): string {
 
   lines.push(``);
   lines.push(`Jazakumullahu khairan.`);
-  lines.push(`— Tim Tahfizh Space`);
+  lines.push(`— Tim Tahfizh Manarul Ilmi`);
 
   return lines.join('\n');
 }
@@ -133,7 +133,7 @@ export function buildPesanSppWali(input: PesanSppWaliInput): string {
     `Barakallahu fiikum.`,
     ``,
     `Hormat kami,`,
-    `Tim Tahfizh Space`,
+    `Tim Tahfizh Manarul Ilmi`,
   ].join('\n');
 }
 

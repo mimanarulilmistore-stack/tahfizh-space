@@ -132,7 +132,7 @@ export default function RingkasanBulananCard({
 
       {/* Header cetak */}
       <div className="hidden print:block mb-4 border-b border-slate-300 pb-3">
-        <p className="text-xs text-slate-500 uppercase tracking-wider">Tahfizh Space · Ringkasan Bulanan</p>
+        <p className="text-xs text-slate-500 uppercase tracking-wider">Tahfizh Manarul Ilmi · Ringkasan Bulanan</p>
         <h3 className="text-xl font-bold text-slate-900 mt-1">{santriNama}</h3>
         <p className="text-sm text-slate-600">
           PIN {kodeUnik}
