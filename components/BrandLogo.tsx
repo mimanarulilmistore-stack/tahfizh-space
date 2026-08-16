@@ -23,9 +23,9 @@ type BrandLogoProps = {
 };
 
 const SIZE_MAP = {
-  sm: { box: 'h-9 w-9', px: 36 },
-  md: { box: 'h-16 w-16', px: 64 },
-  lg: { box: 'h-24 w-24', px: 96 },
+  sm: { box: 'h-10 w-10', px: 40 },
+  md: { box: 'h-[4.5rem] w-[4.5rem]', px: 72 },
+  lg: { box: 'h-28 w-28', px: 112 },
 } as const;
 
 export default function BrandLogo({
@@ -51,7 +51,11 @@ export default function BrandLogo({
         isStacked ? 'flex-col items-center gap-2' : 'items-center gap-2.5'
       } ${className}`}
     >
-      <div className={`${s.box} relative shrink-0 overflow-hidden`}>
+      <div
+        className={`${s.box} relative shrink-0 overflow-visible ${
+          onDark ? 'drop-shadow-[0_0_10px_rgba(255,255,255,0.35)]' : ''
+        }`}
+      >
         <Image
           src={src}
           alt={`Logo ${BRAND_NAME}`}
