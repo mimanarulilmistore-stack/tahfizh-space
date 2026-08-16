@@ -10,8 +10,8 @@ export default function HomePage() {
       <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center">
           <div className="flex items-center gap-2.5 font-bold text-xl text-emerald-700 dark:text-emerald-400">
-            <BrandLogo size="sm" />
-            <span className="text-base sm:text-lg">{BRAND_NAME}</span>
+            <BrandLogo size="sm" tone="onLight" />
+            <span className="text-base sm:text-lg text-slate-900 dark:text-slate-100">{BRAND_NAME}</span>
           </div>
         </div>
       </header>
@@ -19,7 +19,7 @@ export default function HomePage() {
       {/* Hero Section */}
       <main className="flex-1 flex flex-col items-center justify-center text-center px-4 py-16 max-w-4xl mx-auto">
         <div className="mb-6">
-          <BrandLogo size="lg" layout="stacked" />
+          <BrandLogo size="lg" layout="stacked" tone="onLight" />
         </div>
 
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-6 border border-emerald-200 dark:border-emerald-800">

@@ -91,7 +91,7 @@ export default function HeaderAdmin() {
             onClick={() => router.push('/dashboard')}
             className="flex items-center gap-2.5 cursor-pointer group"
           >
-            <BrandLogo size="sm" />
+            <BrandLogo size="sm" tone="onDark" />
             <div>
               <h1 className="text-sm font-bold text-white tracking-wide leading-tight">
                 {BRAND_NAME}
