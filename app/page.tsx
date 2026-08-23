@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import BrandLogo from '@/components/BrandLogo';
-import { BRAND_NAME, BRAND_TAGLINE } from '@/src/utils/brand';
+import { BRAND_NAME, BRAND_TAGLINE } from '@/src/config/brand';
 import { UserCheck, ShieldCheck, Award, ArrowRight } from 'lucide-react';
 
 export default function HomePage() {

@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import BrandLogo from '@/components/BrandLogo';
-import { BRAND_NAME } from '@/src/utils/brand';
+import { BRAND_NAME } from '@/src/config/brand';
+import { features } from '@/src/config/features';
 import { 
   LayoutDashboard, 
   QrCode, 
@@ -25,6 +26,14 @@ import {
 
 const supabase = getBrowserSupabase();
 
+type NavItem = {
+  path: string;
+  label: string;
+  mobileLabel?: string;
+  icon: React.ReactNode;
+  enabled: boolean;
+};
+
 export default function HeaderAdmin() {
   const router = useRouter();
   const pathname = usePathname();
@@ -35,6 +44,62 @@ export default function HeaderAdmin() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  const navItems: NavItem[] = [
+    {
+      path: '/dashboard',
+      label: 'Dashboard',
+      icon: <LayoutDashboard className="w-4 h-4" />,
+      enabled: true,
+    },
+    {
+      path: '/dashboard/input',
+      label: 'Input Setoran',
+      icon: <BookOpen className="w-4 h-4 text-emerald-400" />,
+      enabled: true,
+    },
+    {
+      path: '/dashboard/input-massal',
+      label: 'Input Massal',
+      icon: <Layers className="w-4 h-4 text-sky-400" />,
+      enabled: features.inputMassal,
+    },
+    {
+      path: '/dashboard/absensi',
+      label: 'Absensi',
+      icon: <ClipboardCheck className="w-4 h-4 text-emerald-400" />,
+      enabled: features.absensi,
+    },
+    {
+      path: '/dashboard/spp',
+      label: 'SPP',
+      mobileLabel: 'SPP Bulanan',
+      icon: <Wallet className="w-4 h-4 text-amber-400" />,
+      enabled: features.spp,
+    },
+    {
+      path: '/dashboard/cetak-kartu',
+      label: 'Cetak PIN',
+      mobileLabel: 'Cetak PIN Wali',
+      icon: <QrCode className="w-4 h-4 text-emerald-400" />,
+      enabled: features.cetakKartu,
+    },
+    {
+      path: '/dashboard/laporan',
+      label: 'Laporan',
+      mobileLabel: 'Laporan & Rapor',
+      icon: <FileText className="w-4 h-4 text-emerald-400" />,
+      enabled: features.laporan,
+    },
+    {
+      path: '/dashboard/pengumuman',
+      label: 'Pengumuman',
+      icon: <Megaphone className="w-4 h-4 text-amber-400" />,
+      enabled: features.pengumuman,
+    },
+  ];
+
+  const visibleNav = navItems.filter((item) => item.enabled);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -81,6 +146,14 @@ export default function HeaderAdmin() {
     if (path === '/dashboard/input') return pathname === '/dashboard/input';
     return pathname === path || pathname.startsWith(`${path}/`);
   };
+
+  const navButtonClass = (path: string) =>
+    `px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
+      isActive(path)
+        ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300'
+        : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+    }`;
+
   return (
     <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -104,103 +177,17 @@ export default function HeaderAdmin() {
 
           {/* DESKTOP NAVIGATION */}
           <nav className="hidden md:flex items-center gap-1.5">
-            <button
-              onClick={() => router.push('/dashboard')}
-              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
-                isActive('/dashboard') 
-                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              Dashboard
-            </button>
-
-            <button
-              onClick={() => router.push('/dashboard/input')}
-              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
-                isActive('/dashboard/input') 
-                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-              }`}
-            >
-              <BookOpen className="w-4 h-4 text-emerald-400" />
-              Input Setoran
-            </button>
-
-            <button
-              onClick={() => router.push('/dashboard/input-massal')}
-              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
-                isActive('/dashboard/input-massal') 
-                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-              }`}
-            >
-              <Layers className="w-4 h-4 text-sky-400" />
-              Input Massal
-            </button>
-
-            <button
-              onClick={() => router.push('/dashboard/absensi')}
-              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
-                isActive('/dashboard/absensi')
-                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-              }`}
-            >
-              <ClipboardCheck className="w-4 h-4 text-emerald-400" />
-              Absensi
-            </button>
-
-            <button
-              onClick={() => router.push('/dashboard/spp')}
-              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
-                isActive('/dashboard/spp')
-                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-              }`}
-            >
-              <Wallet className="w-4 h-4 text-amber-400" />
-              SPP
-            </button>
-
-            {/* TOMBOL CETAK PIN */}
-            <button
-              onClick={() => router.push('/dashboard/cetak-kartu')}
-              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
-                isActive('/dashboard/cetak-kartu') 
-                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-              }`}
-            >
-              <QrCode className="w-4 h-4 text-emerald-400" />
-              Cetak PIN
-            </button>
-
-            {/* TOMBOL LAPORAN */}
-            <button
-              onClick={() => router.push('/dashboard/laporan')}
-              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
-                isActive('/dashboard/laporan') 
-                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-              }`}
-            >
-              <FileText className="w-4 h-4 text-emerald-400" />
-              Laporan
-            </button>
-
-            <button
-              onClick={() => router.push('/dashboard/pengumuman')}
-              className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
-                isActive('/dashboard/pengumuman')
-                  ? 'bg-emerald-950/60 border border-emerald-800/80 text-emerald-300'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-              }`}
-            >
-              <Megaphone className="w-4 h-4 text-amber-400" />
-              Pengumuman
-            </button>
+            {visibleNav.map((item) => (
+              <button
+                key={item.path}
+                type="button"
+                onClick={() => router.push(item.path)}
+                className={navButtonClass(item.path)}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
 
             <div className="h-4 w-[1px] bg-slate-800 mx-2" />
 
@@ -213,7 +200,6 @@ export default function HeaderAdmin() {
               Sandi
             </button>
 
-            {/* LOGOUT */}
             <button
               onClick={handleLogout}
               className="px-3.5 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-950/30 hover:text-rose-300 rounded-xl transition-all flex items-center gap-1.5"
@@ -239,93 +225,20 @@ export default function HeaderAdmin() {
       {/* MOBILE MENU DROPDOWN */}
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-slate-800 bg-slate-900/95 backdrop-blur-lg px-4 pt-3 pb-4 space-y-1.5">
-          <button
-            onClick={() => {
-              router.push('/dashboard');
-              setIsMobileMenuOpen(false);
-            }}
-            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
-          >
-            <LayoutDashboard className="w-4 h-4 text-emerald-400" />
-            Dashboard
-          </button>
-
-          <button
-            onClick={() => {
-              router.push('/dashboard/input');
-              setIsMobileMenuOpen(false);
-            }}
-            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
-          >
-            <BookOpen className="w-4 h-4 text-emerald-400" />
-            Input Setoran
-          </button>
-
-          <button
-            onClick={() => {
-              router.push('/dashboard/input-massal');
-              setIsMobileMenuOpen(false);
-            }}
-            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
-          >
-            <Layers className="w-4 h-4 text-sky-400" />
-            Input Massal
-          </button>
-
-          <button
-            onClick={() => {
-              router.push('/dashboard/absensi');
-              setIsMobileMenuOpen(false);
-            }}
-            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
-          >
-            <ClipboardCheck className="w-4 h-4 text-emerald-400" />
-            Absensi
-          </button>
-
-          <button
-            onClick={() => {
-              router.push('/dashboard/spp');
-              setIsMobileMenuOpen(false);
-            }}
-            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
-          >
-            <Wallet className="w-4 h-4 text-amber-400" />
-            SPP Bulanan
-          </button>
-
-          <button
-            onClick={() => {
-              router.push('/dashboard/cetak-kartu');
-              setIsMobileMenuOpen(false);
-            }}
-            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
-          >
-            <QrCode className="w-4 h-4 text-emerald-400" />
-            Cetak PIN Wali
-          </button>
-
-          <button
-            onClick={() => {
-              router.push('/dashboard/laporan');
-              setIsMobileMenuOpen(false);
-            }}
-            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
-          >
-            <FileText className="w-4 h-4 text-emerald-400" />
-            Laporan & Rapor
-          </button>
-
-          <button
-            onClick={() => {
-              router.push('/dashboard/pengumuman');
-              setIsMobileMenuOpen(false);
-            }}
-            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
-          >
-            <Megaphone className="w-4 h-4 text-amber-400" />
-            Pengumuman
-          </button>
+          {visibleNav.map((item) => (
+            <button
+              key={item.path}
+              type="button"
+              onClick={() => {
+                router.push(item.path);
+                setIsMobileMenuOpen(false);
+              }}
+              className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5"
+            >
+              {item.icon}
+              {item.mobileLabel || item.label}
+            </button>
+          ))}
 
           <button
             onClick={openPasswordModal}

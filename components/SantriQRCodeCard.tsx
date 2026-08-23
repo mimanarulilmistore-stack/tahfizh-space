@@ -2,6 +2,7 @@
 
 import React, { useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { BRAND_APP_URL, BRAND_COLOR } from "@/src/config/brand";
 
 interface SantriQRCodeCardProps {
   santri: {
@@ -25,12 +26,12 @@ export default function SantriQRCodeCard({
   const code = santri.uniqueCode || santri.unique_code || "UNKNOWN";
   const group = santri.classGroup || santri.class_group;
 
-  // Penentuan Origin Domain otomatis
+  // Origin: prop → window → NEXT_PUBLIC_APP_URL (jangan hardcode domain produksi)
   const origin =
     baseUrl ||
     (typeof window !== "undefined" && window.location.origin
       ? window.location.origin
-      : "https://tahfizh-space.vercel.app");
+      : BRAND_APP_URL || "");
 
   // Dynamic Magic Link untuk Target QR Code
   const qrTargetUrl = `${origin}/santri/${code}`;
@@ -87,7 +88,7 @@ export default function SantriQRCodeCard({
             value={qrTargetUrl}
             size={180}
             bgColor={"#FFFFFF"}
-            fgColor={"#047857"} // Emerald 700
+            fgColor={BRAND_COLOR}
             level={"H"}
             includeMargin={false}
           />

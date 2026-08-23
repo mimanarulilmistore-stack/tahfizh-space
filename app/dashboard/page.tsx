@@ -7,6 +7,7 @@ import PusatInfoAdminCard, {
   type InfoAdminItem,
 } from '@/components/PusatInfoAdminCard';
 import { getBrowserSupabase } from '@/src/lib/supabase';
+import { features } from '@/src/config/features';
 import { computeJuzProgress, getSantriLevel } from '@/src/utils/badgeCalculator';
 import { generateRandomKodeUnik } from '@/src/utils/kodeUnik';
 import { computeTargetMingguan } from '@/src/utils/targetMingguan';
@@ -415,14 +416,16 @@ export default function AdminDashboardPage() {
     const tertinggalTargetCount = santriList.filter((s) => s.target_mingguan_tertinggal).length;
     const sudahSetorHariIniCount = santriList.filter((s) => s.setor_hari_ini).length;
     const belumSetorHariIniCount = Math.max(0, santriList.length - sudahSetorHariIniCount);
-    const pengumumanAktif = pengumumanList.filter((item) => {
-      if (!item.aktif) return false;
-      const mulai = item.tampil_mulai ? getLocalDateKey(item.tampil_mulai) : null;
-      const sampai = item.tampil_sampai ? getLocalDateKey(item.tampil_sampai) : null;
-      if (mulai && mulai > todayKey) return false;
-      if (sampai && sampai < todayKey) return false;
-      return true;
-    });
+    const pengumumanAktif = features.pengumuman
+      ? pengumumanList.filter((item) => {
+          if (!item.aktif) return false;
+          const mulai = item.tampil_mulai ? getLocalDateKey(item.tampil_mulai) : null;
+          const sampai = item.tampil_sampai ? getLocalDateKey(item.tampil_sampai) : null;
+          if (mulai && mulai > todayKey) return false;
+          if (sampai && sampai < todayKey) return false;
+          return true;
+        })
+      : [];
 
     return [
       ...pengumumanAktif.map<InfoAdminItem>((item) => ({

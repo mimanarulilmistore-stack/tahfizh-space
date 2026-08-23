@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Hash, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import BrandLogo from '@/components/BrandLogo';
-import { BRAND_NAME } from '@/src/utils/brand';
+import { BRAND_NAME } from '@/src/config/brand';
 
 /**
  * Portal wali: hanya input PIN → redirect ke /santri/{kode}.

@@ -9,7 +9,8 @@ import BrandLogo from "@/components/BrandLogo";
 import Link from "next/link";
 import { computeJuzProgress, getSantriLevel } from "@/src/utils/badgeCalculator";
 import { getTingkatanLabel } from "@/src/utils/tingkatan";
-import { BRAND_NAME } from "@/src/utils/brand";
+import { BRAND_NAME } from "@/src/config/brand";
+import { features } from "@/src/config/features";
 
 interface PageProps {
   params: Promise<{
@@ -239,33 +240,39 @@ export default async function SantriDetailPage({ params }: PageProps) {
           variant="light"
         />
 
-        <RekapAbsensiWaliCard
-          santriNama={santri.nama_lengkap}
-          records={absensiRecords}
-          variant="light"
-        />
-
-        <div className="space-y-6 print:hidden">
-          <JuzMap
-            completedJuz={progress.juzSelesaiList}
-            startedJuz={progress.juzDimulaiList}
-            targetJuz={santri.target_juz || 30}
+        {features.absensi && (
+          <RekapAbsensiWaliCard
+            santriNama={santri.nama_lengkap}
+            records={absensiRecords}
             variant="light"
           />
-          <p className="text-center text-xs text-slate-400 -mt-3">
-            Peta ini hanya tampilan. Penandaan juz selesai dilakukan oleh ustadz di dashboard.
-          </p>
+        )}
 
-          <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">
-              Pencapaian & Lencana
-            </h2>
-            <SantriBadgesGrid
-              santriId={santri.id}
-              targetJuz={santri.target_juz || 30}
-              initialSetoran={badgeSetoran}
-            />
-          </section>
+        <div className="space-y-6 print:hidden">
+          {features.portalBadge && (
+            <>
+              <JuzMap
+                completedJuz={progress.juzSelesaiList}
+                startedJuz={progress.juzDimulaiList}
+                targetJuz={santri.target_juz || 30}
+                variant="light"
+              />
+              <p className="text-center text-xs text-slate-400 -mt-3">
+                Peta ini hanya tampilan. Penandaan juz selesai dilakukan oleh ustadz di dashboard.
+              </p>
+
+              <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">
+                  Pencapaian & Lencana
+                </h2>
+                <SantriBadgesGrid
+                  santriId={santri.id}
+                  targetJuz={santri.target_juz || 30}
+                  initialSetoran={badgeSetoran}
+                />
+              </section>
+            </>
+          )}
 
           <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">

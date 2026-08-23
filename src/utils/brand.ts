@@ -1,10 +1,14 @@
-/** Nama merek lembaga (teks yang tampil ke pengguna). */
-export const BRAND_NAME = 'Tahfizh Manarul Ilmi';
-export const BRAND_NAME_SHORT = 'Manarul Ilmi';
-export const BRAND_TAGLINE = "Sistem Mutaba'ah & Manajemen Hafalan Al-Qur'an";
-/** Logo resmi (navy+emas) untuk latar terang / favicon */
-export const BRAND_LOGO_ON_LIGHT = '/logo-mio-academy-on-light.png';
-/** Logo resmi diolah (putih+emas, lebih tebal) untuk latar gelap */
-export const BRAND_LOGO_ON_DARK = '/logo-mio-academy-on-dark-v2.png';
-export const BRAND_LOGO_SRC = BRAND_LOGO_ON_LIGHT;
-export const BRAND_TEAM_SIGNATURE = 'Tim Tahfizh Manarul Ilmi';
+/** Re-export kit merek agar import lama (@/src/utils/brand) tetap jalan. */
+export {
+  BRAND_NAME,
+  BRAND_NAME_SHORT,
+  BRAND_TAGLINE,
+  BRAND_INSTITUTION,
+  BRAND_TEAM_SIGNATURE,
+  BRAND_APP_URL,
+  BRAND_LOGO_ON_LIGHT,
+  BRAND_LOGO_ON_DARK,
+  BRAND_LOGO_SRC,
+  BRAND_COLOR,
+  brand,
+} from '@/src/config/brand';

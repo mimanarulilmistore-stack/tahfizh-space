@@ -26,6 +26,7 @@ import {
   buildPesanSppWali,
   buildWhatsAppClickToChatUrl,
 } from '@/src/utils/pesanWali';
+import { features } from '@/src/config/features';
 import {
   AlertCircle,
   ArrowLeft,
@@ -597,28 +598,30 @@ export default function SppPage() {
                                 </button>
                               );
                             })}
-                            <button
-                              type="button"
-                              onClick={() => handleKirimWaPengingat(s)}
-                              disabled={current === 'lunas'}
-                              title={
-                                current === 'lunas'
-                                  ? 'Sudah lunas — pengingat tidak diperlukan'
-                                  : s.no_wa_wali?.trim()
-                                    ? 'Kirim pengingat SPP via WhatsApp ke wali'
-                                    : 'Nomor WA wali belum diisi'
-                              }
-                              className={`py-2 text-xs font-bold rounded-lg transition-all inline-flex items-center justify-center gap-1 ${
-                                current === 'lunas'
-                                  ? 'text-slate-600 border border-transparent cursor-not-allowed'
-                                  : s.no_wa_wali?.trim()
-                                    ? 'bg-sky-950/50 text-sky-300 border border-sky-800/60 hover:bg-sky-900'
-                                    : 'text-amber-400/80 border border-amber-800/40 hover:bg-amber-950/40'
-                              }`}
-                            >
-                              <MessageCircle className="w-3.5 h-3.5" />
-                              WA
-                            </button>
+                            {features.whatsapp && (
+                              <button
+                                type="button"
+                                onClick={() => handleKirimWaPengingat(s)}
+                                disabled={current === 'lunas'}
+                                title={
+                                  current === 'lunas'
+                                    ? 'Sudah lunas — pengingat tidak diperlukan'
+                                    : s.no_wa_wali?.trim()
+                                      ? 'Kirim pengingat SPP via WhatsApp ke wali'
+                                      : 'Nomor WA wali belum diisi'
+                                }
+                                className={`py-2 text-xs font-bold rounded-lg transition-all inline-flex items-center justify-center gap-1 ${
+                                  current === 'lunas'
+                                    ? 'text-slate-600 border border-transparent cursor-not-allowed'
+                                    : s.no_wa_wali?.trim()
+                                      ? 'bg-sky-950/50 text-sky-300 border border-sky-800/60 hover:bg-sky-900'
+                                      : 'text-amber-400/80 border border-amber-800/40 hover:bg-amber-950/40'
+                                }`}
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                                WA
+                              </button>
+                            )}
                           </div>
                         </div>
 

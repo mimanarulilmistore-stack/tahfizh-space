@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import {
+  BRAND_LOGO_ON_LIGHT,
+  BRAND_NAME,
+  BRAND_TAGLINE,
+  BRAND_COLOR,
+} from "@/src/config/brand";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,12 +19,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tahfizh Manarul Ilmi",
-  description:
-    "Sistem Mutaba'ah & Manajemen Hafalan Al-Qur'an — Tahfizh Manarul Ilmi",
+  title: BRAND_NAME,
+  description: `${BRAND_TAGLINE} — ${BRAND_NAME}`,
   icons: {
-    icon: "/logo-mio-academy-on-light.png",
-    apple: "/logo-mio-academy-on-light.png",
+    icon: BRAND_LOGO_ON_LIGHT,
+    apple: BRAND_LOGO_ON_LIGHT,
   },
 };
 
@@ -31,6 +36,7 @@ export default function RootLayout({
     <html
       lang="id"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      style={{ ["--brand" as string]: BRAND_COLOR }}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { Suspense } from 'react';
 import BrandLogo from '@/components/BrandLogo';
-import { BRAND_NAME } from '@/src/utils/brand';
+import { BRAND_NAME } from '@/src/config/brand';
 
 const supabase = getBrowserSupabase();
 

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isDashboardPathEnabled } from '@/src/config/features'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -11,6 +12,13 @@ export async function middleware(request: NextRequest) {
     pathname === '/favicon.ico'
   ) {
     return NextResponse.next()
+  }
+
+  // Saklar fitur: blokir URL modul yang dimatikan (meski user tahu alamatnya)
+  if (pathname.startsWith('/dashboard') && !isDashboardPathEnabled(pathname)) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
   }
 
   let supabaseResponse = NextResponse.next({

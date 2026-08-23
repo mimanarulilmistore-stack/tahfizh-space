@@ -3,7 +3,7 @@ import {
   BRAND_LOGO_ON_DARK,
   BRAND_LOGO_ON_LIGHT,
   BRAND_NAME,
-} from '@/src/utils/brand';
+} from '@/src/config/brand';
 
 type BrandLogoProps = {
   /** sm = header sempit, md = login/portal, lg = hero */

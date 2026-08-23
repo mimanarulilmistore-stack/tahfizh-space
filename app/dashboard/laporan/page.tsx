@@ -26,6 +26,8 @@ import {
   normalizeStatusAbsensi,
   getStatusAbsensiLabel,
 } from '@/src/utils/absensi';
+import { BRAND_INSTITUTION, BRAND_NAME } from '@/src/config/brand';
+import { features } from '@/src/config/features';
 import {
   FileText,
   Printer,
@@ -621,17 +623,19 @@ export default function LaporanDashboardPage() {
                   <Users className="w-4 h-4" />
                   Rekap Kelas
                 </button>
-                <button
-                  onClick={() => setReportType('absensi')}
-                  className={`flex-1 sm:flex-none px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
-                    reportType === 'absensi'
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <ClipboardCheck className="w-4 h-4" />
-                  Rekap Absensi
-                </button>
+                {features.absensi && (
+                  <button
+                    onClick={() => setReportType('absensi')}
+                    className={`flex-1 sm:flex-none px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                      reportType === 'absensi'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <ClipboardCheck className="w-4 h-4" />
+                    Rekap Absensi
+                  </button>
+                )}
               </div>
 
               {reportType === 'individual' && (
@@ -755,10 +759,10 @@ export default function LaporanDashboardPage() {
             <div className="border-b-2 border-black pb-4 mb-6 flex items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black tracking-wider uppercase text-slate-900">
-                  Tahfizh Manarul Ilmi
+                  {BRAND_NAME}
                 </h1>
                 <p className="text-xs text-slate-600 font-medium">
-                  Lembaga Pendidikan Tahfizh Al-Qur&apos;an
+                  {BRAND_INSTITUTION}
                 </p>
                 <p className="text-[10px] text-slate-500 mt-0.5">
                   Sistem Informasi & Mutaba&apos;ah Perkembangan Hafalan Santri

@@ -8,6 +8,7 @@ import {
   toYearMonthKey,
   type SetoranRingkasan,
 } from '@/src/utils/ringkasanBulanan';
+import { BRAND_NAME } from '@/src/config/brand';
 import { ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 
 type RingkasanBulananProps = {
@@ -132,7 +133,9 @@ export default function RingkasanBulananCard({
 
       {/* Header cetak */}
       <div className="hidden print:block mb-4 border-b border-slate-300 pb-3">
-        <p className="text-xs text-slate-500 uppercase tracking-wider">Tahfizh Manarul Ilmi · Ringkasan Bulanan</p>
+        <p className="text-xs text-slate-500 uppercase tracking-wider">
+          {BRAND_NAME} · Ringkasan Bulanan
+        </p>
         <h3 className="text-xl font-bold text-slate-900 mt-1">{santriNama}</h3>
         <p className="text-sm text-slate-600">
           PIN {kodeUnik}
