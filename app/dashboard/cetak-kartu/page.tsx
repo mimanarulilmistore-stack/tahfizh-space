@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import HeaderAdmin from '@/components/HeaderAdmin';
+import BrandMark from '@/components/BrandMark';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import {
   generateRandomKodeUnik,
@@ -11,12 +12,12 @@ import {
   getPinFormatLabel,
 } from '@/src/utils/kodeUnik';
 import { getTingkatanLabel } from '@/src/utils/tingkatan';
+import { brand } from '@/src/config/brand';
 import {
   Printer,
   Search,
   RefreshCw,
   ArrowLeft,
-  ShieldCheck,
   QrCode,
   Users,
   CheckSquare,
@@ -105,7 +106,7 @@ function CetakKartuPinContent() {
         }
 
         if (typeof window !== 'undefined') {
-          setOriginUrl(window.location.origin);
+          setOriginUrl(window.location.origin || brand.appUrl);
         }
 
         const profiles = await loadSantri(preselectId ? [preselectId] : undefined);
@@ -468,8 +469,12 @@ function CetakKartuPinContent() {
                       <div className="flex items-start justify-between gap-2 border-b border-slate-800 print:border-slate-300 pb-2.5 mt-1">
                         <div>
                           <div className="flex items-center gap-1.5 text-emerald-400 print:text-emerald-800 font-extrabold text-[11px] tracking-wider uppercase">
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                            TAHFIZH SPACE
+                            <BrandMark
+                              variant="shield"
+                              iconClassName="h-3.5 w-3.5"
+                              imgClassName="h-7 w-7 object-contain"
+                            />
+                            {brand.shortName}
                           </div>
                           <p className="text-[9px] text-slate-400 print:text-slate-600 font-medium">
                             Kartu Akses Pantau Wali Santri
@@ -503,6 +508,7 @@ function CetakKartuPinContent() {
                             size={56}
                             level="M"
                             includeMargin={false}
+                            fgColor={brand.qrFg}
                           />
                         </div>
                       </div>

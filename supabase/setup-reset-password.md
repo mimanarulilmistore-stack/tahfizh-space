@@ -1,10 +1,13 @@
 -- Catatan setup Reset Password (bukan migrasi tabel).
 -- Lakukan di Supabase Dashboard setelah deploy fitur reset.
 
+-- Ganti DOMAIN-ANDA dengan URL Vercel / domain kustom pembeli
+-- (contoh: https://nama-lembaga.vercel.app). Jangan menyalin URL lembaga lain.
+
 -- 1) Authentication → URL Configuration
---    Site URL: https://tahfizh-space.vercel.app  (atau domain Anda)
+--    Site URL: https://DOMAIN-ANDA
 --    Redirect URLs (tambahkan keduanya):
---      https://tahfizh-space.vercel.app/auth/callback
+--      https://DOMAIN-ANDA/auth/callback
 --      http://localhost:3000/auth/callback
 
 -- 2) Authentication → Emails → pastikan template "Reset Password" aktif

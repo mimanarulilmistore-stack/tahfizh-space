@@ -7,6 +7,8 @@ import PusatInfoAdminCard, {
   type InfoAdminItem,
 } from '@/components/PusatInfoAdminCard';
 import { getBrowserSupabase } from '@/src/lib/supabase';
+import { brand } from '@/src/config/brand';
+import { features } from '@/src/config/features';
 import { computeJuzProgress, getSantriLevel } from '@/src/utils/badgeCalculator';
 import { generateRandomKodeUnik } from '@/src/utils/kodeUnik';
 import { computeTargetMingguan } from '@/src/utils/targetMingguan';
@@ -169,15 +171,19 @@ export default function AdminDashboardPage() {
         .select(
           'id, santri_id, jenis_setoran, juz, juz_selesai, nilai_kelancaran, nilai_tajwid, tanggal_setoran, created_at'
         );
-      const { data: pengumumanData, error: pengumumanError } = await supabase
-        .from('admin_pengumuman')
-        .select('id, judul, isi, tingkat, pinned, aktif, tampil_mulai, tampil_sampai')
-        .eq('aktif', true)
-        .order('pinned', { ascending: false })
-        .order('created_at', { ascending: false });
+      let pengumumanData: PengumumanAdmin[] | null = null;
+      if (features.pengumuman) {
+        const { data, error: pengumumanError } = await supabase
+          .from('admin_pengumuman')
+          .select('id, judul, isi, tingkat, pinned, aktif, tampil_mulai, tampil_sampai')
+          .eq('aktif', true)
+          .order('pinned', { ascending: false })
+          .order('created_at', { ascending: false });
 
-      if (pengumumanError) {
-        console.error('Error fetching pengumuman:', pengumumanError);
+        if (pengumumanError) {
+          console.error('Error fetching pengumuman:', pengumumanError);
+        }
+        pengumumanData = data as PengumumanAdmin[] | null;
       }
 
       const bySantri: Record<string, any[]> = {};
@@ -425,22 +431,24 @@ export default function AdminDashboardPage() {
     });
 
     return [
-      ...pengumumanAktif.map<InfoAdminItem>((item) => ({
-        id: `pengumuman-${item.id}`,
-        eyebrow: item.pinned ? 'Pengumuman Dipin' : 'Pengumuman Admin',
-        title: item.judul,
-        description: item.isi,
-        count: 1,
-        unit: item.tingkat,
-        tone:
-          item.tingkat === 'darurat'
-            ? 'danger'
-            : item.tingkat === 'penting'
-              ? 'warning'
-              : 'info',
-        actionLabel: 'Kelola pengumuman',
-        onAction: () => router.push('/dashboard/pengumuman'),
-      })),
+      ...(features.pengumuman
+        ? pengumumanAktif.map<InfoAdminItem>((item) => ({
+            id: `pengumuman-${item.id}`,
+            eyebrow: item.pinned ? 'Pengumuman Dipin' : 'Pengumuman Admin',
+            title: item.judul,
+            description: item.isi,
+            count: 1,
+            unit: item.tingkat,
+            tone:
+              item.tingkat === 'darurat'
+                ? 'danger'
+                : item.tingkat === 'penting'
+                  ? 'warning'
+                  : 'info',
+            actionLabel: 'Kelola pengumuman',
+            onAction: () => router.push('/dashboard/pengumuman'),
+          }))
+        : []),
       {
         id: 'perhatian',
         eyebrow: 'Pantauan Operasional',
@@ -502,8 +510,9 @@ export default function AdminDashboardPage() {
         count: belumSetorHariIniCount,
         unit: 'santri',
         tone: belumSetorHariIniCount > 0 ? 'warning' : 'success',
-        actionLabel: 'Input massal',
-        onAction: () => router.push('/dashboard/input-massal'),
+        actionLabel: features.inputMassal ? 'Input massal' : 'Input setoran',
+        onAction: () =>
+          router.push(features.inputMassal ? '/dashboard/input-massal' : '/dashboard/input'),
       },
     ];
   }, [filteredPerhatian.length, pengumumanList, router, santriList]);
@@ -539,7 +548,7 @@ export default function AdminDashboardPage() {
             <div>
               <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold tracking-wide uppercase mb-1">
                 <Sparkles className="w-4 h-4" />
-                Pusat Kendali Pengampu Tahfizh
+                Pusat Kendali Pengampu {brand.name}
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-white">
                 Manajemen Data Santri & Performa Kelas

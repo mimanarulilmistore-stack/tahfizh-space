@@ -8,6 +8,7 @@ import RingkasanBulananCard from '@/components/RingkasanBulanan';
 import TargetMingguanCard from '@/components/TargetMingguanCard';
 import SalinPesanWali from '@/components/SalinPesanWali';
 import { getBrowserSupabase } from '@/src/lib/supabase';
+import { features } from '@/src/config/features';
 import { computeJuzProgress } from '@/src/utils/badgeCalculator';
 import {
   TINGKATAN_OPTIONS,
@@ -457,6 +458,7 @@ export default function KelolaSantriPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2 print:hidden">
+              {features.cetakKartu && (
               <button
                 type="button"
                 onClick={() => router.push(`/dashboard/cetak-kartu?santri_id=${santriId}`)}
@@ -465,6 +467,7 @@ export default function KelolaSantriPage() {
                 <Printer className="w-3.5 h-3.5" />
                 Cetak Ulang Kartu
               </button>
+              )}
             </div>
           </div>
 
@@ -628,7 +631,7 @@ export default function KelolaSantriPage() {
             variant="dark"
           />
 
-          {pesanWaliPayload && (
+          {features.whatsapp && pesanWaliPayload && (
             <div className="print:hidden">
               <SalinPesanWali
                 payload={pesanWaliPayload}
@@ -713,6 +716,7 @@ export default function KelolaSantriPage() {
                           </td>
                           <td className="px-3 py-2.5 text-right">
                             <div className="inline-flex items-center gap-1.5">
+                              {features.whatsapp && (
                               <button
                                 type="button"
                                 onClick={() => openPesanWali(item)}
@@ -721,6 +725,7 @@ export default function KelolaSantriPage() {
                               >
                                 <MessageCircle className="w-3.5 h-3.5" />
                               </button>
+                              )}
                               {item.jenis_setoran === 'ziyadah' &&
                                 item.juz &&
                                 !item.juz_selesai && (

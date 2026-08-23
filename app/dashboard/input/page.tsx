@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
 import SalinPesanWali from '@/components/SalinPesanWali';
 import { getBrowserSupabase } from '@/src/lib/supabase';
+import { brand } from '@/src/config/brand';
+import { features } from '@/src/config/features';
 import type { PesanSetoranWaliInput } from '@/src/utils/pesanWali';
 import { 
   BookOpen, 
@@ -173,29 +175,32 @@ function InputSetoranContent() {
 
       const santri = santriList.find((s) => s.id === selectedSantriId);
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      setPesanWaliPayload({
-        namaSantri: santri?.nama_lengkap || 'Santri',
-        kodeUnik: santri?.kode_unik,
-        noWaWali: santri?.no_wa_wali,
-        jenisSetoran,
-        namaSurah: namaSurah.trim(),
-        juz: Number(juz),
-        ayatMulai,
-        ayatSelesai,
-        nilaiKelancaran,
-        nilaiTajwid,
-        catatan: catatan.trim() || null,
-        juzSelesai: jenisSetoran === 'ziyadah' ? juzSelesai : false,
-        tanggalSetoran,
-        portalUrl: santri?.kode_unik ? `${origin}/santri/${santri.kode_unik}` : null,
-      });
+      if (features.whatsapp) {
+        setPesanWaliPayload({
+          namaSantri: santri?.nama_lengkap || 'Santri',
+          kodeUnik: santri?.kode_unik,
+          noWaWali: santri?.no_wa_wali,
+          jenisSetoran,
+          namaSurah: namaSurah.trim(),
+          juz: Number(juz),
+          ayatMulai,
+          ayatSelesai,
+          nilaiKelancaran,
+          nilaiTajwid,
+          catatan: catatan.trim() || null,
+          juzSelesai: jenisSetoran === 'ziyadah' ? juzSelesai : false,
+          tanggalSetoran,
+          portalUrl: santri?.kode_unik ? `${origin}/santri/${santri.kode_unik}` : null,
+        });
+      }
 
-      // Notifikasi Sukses & Reset Form
-      setToastMessage({ 
-        type: 'success', 
-        text: santri?.no_wa_wali
-          ? 'Setoran tersimpan. Tekan “Kirim via WhatsApp” untuk buka chat ke wali.'
-          : 'Setoran tersimpan. Isi No. WA wali di profil santri agar bisa kirim langsung.',
+      setToastMessage({
+        type: 'success',
+        text: features.whatsapp
+          ? santri?.no_wa_wali
+            ? 'Setoran tersimpan. Tekan “Kirim via WhatsApp” untuk buka chat ke wali.'
+            : 'Setoran tersimpan. Isi No. WA wali di profil santri agar bisa kirim langsung.'
+          : 'Setoran tersimpan.',
       });
       resetForm();
 
@@ -246,7 +251,7 @@ function InputSetoranContent() {
             </button>
             <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold tracking-wide uppercase mb-1">
               <Sparkles className="w-4 h-4" />
-              Modul Pengampu Tahfizh
+              Modul Pengampu {brand.name}
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white">
               Input Setoran Hafalan Santri
@@ -257,6 +262,7 @@ function InputSetoranContent() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            {features.inputMassal && (
             <button
               type="button"
               onClick={() => router.push('/dashboard/input-massal')}
@@ -264,6 +270,7 @@ function InputSetoranContent() {
             >
               Input Massal (banyak santri)
             </button>
+            )}
             <div className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-800/60 px-3.5 py-1.5 rounded-full text-emerald-300 text-xs font-medium w-fit">
               <ShieldCheck className="w-4 h-4" />
               Sesi Ustadz Terverifikasi

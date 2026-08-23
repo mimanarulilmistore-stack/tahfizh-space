@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { getBrowserSupabase } from '@/src/lib/supabase';
+import { brand } from '@/src/config/brand';
 import JuzMap from '@/components/JuzMap';
 import { computeJuzProgress } from '@/src/utils/badgeCalculator';
 import { 
@@ -258,7 +259,7 @@ export default function PortalSantriPage() {
           <div>
             <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold tracking-wide uppercase mb-1">
               <Sparkles className="w-4 h-4" />
-              Portal Mutaba'ah Tahfizh
+              Portal Mutaba&apos;ah {brand.name}
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white">
               Capaian Progres Hafalan Santri

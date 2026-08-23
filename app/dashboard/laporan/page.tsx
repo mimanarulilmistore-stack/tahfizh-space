@@ -3,8 +3,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import HeaderAdmin from '@/components/HeaderAdmin';
+import BrandMark from '@/components/BrandMark';
 import JuzMap from '@/components/JuzMap';
 import { getBrowserSupabase } from '@/src/lib/supabase';
+import { brand } from '@/src/config/brand';
 import { computeJuzProgress, getSantriLevel } from '@/src/utils/badgeCalculator';
 import {
   TINGKATAN_OPTIONS,
@@ -574,16 +576,22 @@ export default function LaporanDashboardPage() {
           {/* DOKUMEN CETAK */}
           <div className="bg-white text-black p-8 sm:p-10 rounded-2xl shadow-2xl border border-slate-200 print:shadow-none print:border-none print:p-0">
             <div className="border-b-2 border-black pb-4 mb-6 flex items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-black tracking-wider uppercase text-slate-900">
-                  TAHFIZH SPACE
-                </h1>
-                <p className="text-xs text-slate-600 font-medium">
-                  Lembaga Pendidikan Tahfizh Al-Qur&apos;an Modern & Terpadu
-                </p>
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  Sistem Informasi & Mutaba&apos;ah Perkembangan Hafalan Santri
-                </p>
+              <div className="flex items-center gap-4 min-w-0">
+                <BrandMark
+                  imgClassName="h-16 w-16 shrink-0 object-contain"
+                  iconClassName="h-10 w-10 text-slate-800"
+                />
+                <div>
+                  <h1 className="text-2xl font-black tracking-wider uppercase text-slate-900">
+                    {brand.shortName}
+                  </h1>
+                  <p className="text-xs text-slate-600 font-medium">
+                    {brand.institution}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Sistem Informasi & Mutaba&apos;ah Perkembangan Hafalan Santri
+                  </p>
+                </div>
               </div>
               <div className="text-right">
                 <span className="inline-block px-3 py-1 bg-slate-100 border border-slate-300 rounded text-xs font-bold font-mono text-slate-800">
@@ -706,7 +714,7 @@ export default function LaporanDashboardPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Penanggung Jawab Tahfizh,</p>
+                    <p className="text-slate-500">Penanggung Jawab {brand.name},</p>
                     <p className="font-bold text-slate-900 mt-0.5">Ustadz Pengampu</p>
                     <div className="h-16" />
                     <p className="font-bold text-slate-900 underline">
@@ -813,7 +821,7 @@ export default function LaporanDashboardPage() {
 
                 <div className="pt-10 mt-8 flex justify-end text-center text-xs break-inside-avoid">
                   <div className="w-64">
-                    <p className="text-slate-500">Koordinator Program Tahfizh,</p>
+                    <p className="text-slate-500">Koordinator Program {brand.name},</p>
                     <div className="h-16" />
                     <p className="font-bold text-slate-900 underline">
                       ( ............................................ )

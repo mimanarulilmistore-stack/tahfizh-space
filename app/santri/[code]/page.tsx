@@ -7,6 +7,7 @@ import PortalExitButton from "@/components/PortalExitButton";
 import Link from "next/link";
 import { computeJuzProgress, getSantriLevel } from "@/src/utils/badgeCalculator";
 import { getTingkatanLabel } from "@/src/utils/tingkatan";
+import { features } from "@/src/config/features";
 
 interface PageProps {
   params: Promise<{
@@ -209,6 +210,7 @@ export default async function SantriDetailPage({ params }: PageProps) {
           variant="light"
         />
 
+        {features.portalBadge && (
         <div className="space-y-6 print:hidden">
           <JuzMap
             completedJuz={progress.juzSelesaiList}
@@ -230,8 +232,11 @@ export default async function SantriDetailPage({ params }: PageProps) {
               initialSetoran={badgeSetoran}
             />
           </section>
+        </div>
+        )}
 
-          <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="space-y-6 print:hidden">
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">
               Riwayat Mutaba&apos;ah
             </h2>

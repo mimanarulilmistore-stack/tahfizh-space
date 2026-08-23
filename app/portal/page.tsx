@@ -3,7 +3,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Hash, ArrowRight, BookOpen, AlertCircle, RefreshCw } from 'lucide-react';
+import { Hash, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
+import { brand } from '@/src/config/brand';
 
 /**
  * Portal wali: hanya input PIN → redirect ke /santri/{kode}.
@@ -33,9 +35,13 @@ export default function PortalPinPage() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 font-sans">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 text-emerald-400 font-bold text-lg">
-            <BookOpen className="w-5 h-5" />
-            TahfizhSpace
+          <div className="inline-flex items-center gap-2.5 text-brand-bright font-bold text-lg">
+            <BrandMark
+              variant="book"
+              iconClassName="w-5 h-5"
+              imgClassName="h-10 w-10 object-contain"
+            />
+            {brand.compactName}
           </div>
           <h1 className="text-2xl font-extrabold text-white">Portal Wali Santri</h1>
           <p className="text-sm text-slate-400">
@@ -70,7 +76,7 @@ export default function PortalPinPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2"
+              className="w-full py-3 bg-brand hover:bg-brand-hover text-brand-foreground font-bold rounded-xl text-sm flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -93,7 +99,7 @@ export default function PortalPinPage() {
           </Link>
           {' · '}
           Ustadz?{' '}
-          <Link href="/login" className="text-emerald-400 hover:underline">
+          <Link href="/login" className="text-brand-bright hover:underline">
             Masuk ke dashboard
           </Link>
         </p>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getBrowserSupabase } from '@/src/lib/supabase';
+import { getAuthErrorMessage, getBrowserSupabase, isSupabaseConfigured } from '@/src/lib/supabase';
 import { 
   Lock, 
   Mail, 
@@ -16,6 +16,8 @@ import {
   Send
 } from 'lucide-react';
 import { Suspense } from 'react';
+import BrandMark from '@/components/BrandMark';
+import { brand } from '@/src/config/brand';
 
 const supabase = getBrowserSupabase();
 
@@ -75,15 +77,18 @@ function LoginContent() {
     setLoading(true);
 
     try {
+      if (!isSupabaseConfigured()) {
+        throw new Error(
+          'Koneksi database belum diatur di komputer ini. Bukan karena email atau sandi salah.'
+        );
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password.trim(),
       });
 
       if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          throw new Error('Email atau kata sandi yang Anda masukkan salah.');
-        }
         throw error;
       }
 
@@ -95,11 +100,9 @@ function LoginContent() {
       return;
     } catch (err: unknown) {
       console.error('Login Error:', err);
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Terjadi kesalahan saat masuk. Silakan coba lagi.';
-      setErrorMessage(message);
+      setErrorMessage(
+        getAuthErrorMessage(err, 'Terjadi kesalahan saat masuk. Silakan coba lagi.')
+      );
       setLoading(false);
     }
   };
@@ -162,10 +165,15 @@ function LoginContent() {
 
       <div className="w-full max-w-md space-y-6">
         
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-3">
+          <BrandMark
+            variant="book"
+            iconClassName="mx-auto h-8 w-8 text-emerald-400"
+            imgClassName="mx-auto h-20 w-20 object-contain"
+          />
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-950/80 border border-emerald-800/80 rounded-full text-emerald-400 text-xs font-semibold tracking-wide">
             <Sparkles className="w-3.5 h-3.5" />
-            Portal Pengampu Tahfizh
+            Portal Pengampu {brand.name}
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Mutaba&apos;ah Santri
@@ -232,7 +240,7 @@ function LoginContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-950 flex items-center justify-center gap-2"
+              className="w-full mt-2 py-3 bg-brand hover:bg-brand-hover active:bg-brand text-brand-foreground font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-950 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -319,7 +327,7 @@ function LoginContent() {
                 <button
                   type="submit"
                   disabled={resetLoading}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-brand hover:bg-brand-hover disabled:bg-slate-700 text-brand-foreground font-bold rounded-xl text-xs flex items-center justify-center gap-2"
                 >
                   {resetLoading ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />

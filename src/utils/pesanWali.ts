@@ -1,3 +1,5 @@
+import { brand } from '@/src/config/brand';
+
 export type PesanSetoranWaliInput = {
   namaSantri: string;
   kodeUnik?: string | null;
@@ -87,7 +89,7 @@ export function buildPesanSetoranWali(input: PesanSetoranWaliInput): string {
 
   lines.push(``);
   lines.push(`Jazakumullahu khairan.`);
-  lines.push(`— Tim Tahfizh Space`);
+  lines.push(`— ${brand.signature}`);
 
   return lines.join('\n');
 }

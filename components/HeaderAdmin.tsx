@@ -3,8 +3,10 @@
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getBrowserSupabase } from '@/src/lib/supabase';
+import { brand } from '@/src/config/brand';
+import { features } from '@/src/config/features';
+import BrandMark from '@/components/BrandMark';
 import { 
-  ShieldCheck, 
   LayoutDashboard, 
   QrCode, 
   FileText, 
@@ -88,14 +90,24 @@ export default function HeaderAdmin() {
             onClick={() => router.push('/dashboard')}
             className="flex items-center gap-2.5 cursor-pointer group"
           >
-            <div className="w-9 h-9 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500/20 transition-all">
-              <ShieldCheck className="w-5 h-5" />
+            <div
+              className={
+                brand.logoUrl
+                  ? 'w-10 h-10 flex items-center justify-center'
+                  : 'w-9 h-9 bg-brand-soft border border-brand/30 rounded-xl flex items-center justify-center text-brand-bright group-hover:bg-brand/20 transition-all overflow-hidden'
+              }
+            >
+              <BrandMark
+                variant="shield"
+                iconClassName="w-5 h-5"
+                imgClassName="h-10 w-10 object-contain"
+              />
             </div>
             <div>
               <h1 className="text-sm font-bold text-white tracking-wide leading-tight">
-                TAHFIZH SPACE
+                {brand.shortName}
               </h1>
-              <p className="text-[10px] text-emerald-400 font-mono font-medium">
+              <p className="text-[10px] text-brand-bright font-mono font-medium">
                 Admin Panel
               </p>
             </div>
@@ -127,6 +139,7 @@ export default function HeaderAdmin() {
               Input Setoran
             </button>
 
+            {features.inputMassal && (
             <button
               onClick={() => router.push('/dashboard/input-massal')}
               className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
@@ -138,8 +151,9 @@ export default function HeaderAdmin() {
               <Layers className="w-4 h-4 text-sky-400" />
               Input Massal
             </button>
+            )}
 
-            {/* TOMBOL CETAK PIN */}
+            {features.cetakKartu && (
             <button
               onClick={() => router.push('/dashboard/cetak-kartu')}
               className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
@@ -151,8 +165,9 @@ export default function HeaderAdmin() {
               <QrCode className="w-4 h-4 text-emerald-400" />
               Cetak PIN
             </button>
+            )}
 
-            {/* TOMBOL LAPORAN */}
+            {features.laporan && (
             <button
               onClick={() => router.push('/dashboard/laporan')}
               className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
@@ -164,7 +179,9 @@ export default function HeaderAdmin() {
               <FileText className="w-4 h-4 text-emerald-400" />
               Laporan
             </button>
+            )}
 
+            {features.pengumuman && (
             <button
               onClick={() => router.push('/dashboard/pengumuman')}
               className={`px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 ${
@@ -176,6 +193,7 @@ export default function HeaderAdmin() {
               <Megaphone className="w-4 h-4 text-amber-400" />
               Pengumuman
             </button>
+            )}
 
             <div className="h-4 w-[1px] bg-slate-800 mx-2" />
 
@@ -236,6 +254,7 @@ export default function HeaderAdmin() {
             Input Setoran
           </button>
 
+          {features.inputMassal && (
           <button
             onClick={() => {
               router.push('/dashboard/input-massal');
@@ -246,7 +265,9 @@ export default function HeaderAdmin() {
             <Layers className="w-4 h-4 text-sky-400" />
             Input Massal
           </button>
+          )}
 
+          {features.cetakKartu && (
           <button
             onClick={() => {
               router.push('/dashboard/cetak-kartu');
@@ -257,7 +278,9 @@ export default function HeaderAdmin() {
             <QrCode className="w-4 h-4 text-emerald-400" />
             Cetak PIN Wali
           </button>
+          )}
 
+          {features.laporan && (
           <button
             onClick={() => {
               router.push('/dashboard/laporan');
@@ -268,7 +291,9 @@ export default function HeaderAdmin() {
             <FileText className="w-4 h-4 text-emerald-400" />
             Laporan & Rapor
           </button>
+          )}
 
+          {features.pengumuman && (
           <button
             onClick={() => {
               router.push('/dashboard/pengumuman');
@@ -279,6 +304,7 @@ export default function HeaderAdmin() {
             <Megaphone className="w-4 h-4 text-amber-400" />
             Pengumuman
           </button>
+          )}
 
           <button
             onClick={openPasswordModal}

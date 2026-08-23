@@ -14,6 +14,29 @@ export function getSupabaseEnv() {
   return { supabaseUrl, supabaseAnonKey };
 }
 
+export function isSupabaseConfigured() {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv();
+  return Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl !== BUILD_PLACEHOLDER_URL);
+}
+
+export function getAuthErrorMessage(err: unknown, fallback: string) {
+  if (!isSupabaseConfigured()) {
+    return "Koneksi database belum diatur di komputer ini. Bukan karena email atau sandi salah.";
+  }
+  const name = err instanceof Error ? err.name : "";
+  const raw = err instanceof Error ? err.message : "";
+  if (
+    name === "AuthRetryableFetchError" ||
+    /failed to fetch|fetch failed|networkerror/i.test(raw)
+  ) {
+    return "Tidak bisa terhubung ke server login. Periksa internet, lalu muat ulang halaman. Ini bukan karena email atau sandi salah.";
+  }
+  if (/invalid login credentials/i.test(raw)) {
+    return "Email atau kata sandi yang Anda masukkan salah.";
+  }
+  return raw || fallback;
+}
+
 /**
  * Browser client berbasis cookie (@supabase/ssr).
  * WAJIB dipakai agar middleware Next.js bisa membaca sesi login.
