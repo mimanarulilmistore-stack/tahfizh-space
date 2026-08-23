@@ -2,10 +2,12 @@
  * Saklar fitur per pembeli (white-label).
  * Default SEMUA NYALA agar situs produksi tidak berubah.
  * Matikan hanya jika env = false | 0 | off (huruf besar/kecil diabaikan).
+ *
+ * PENTING: baca process.env.NEXT_PUBLIC_* secara statis (bukan process.env[key])
+ * agar nilai ikut ter-inline di bundle browser (HeaderAdmin).
  */
 
-function isFeatureEnabled(envKey: string): boolean {
-  const raw = process.env[envKey];
+function isOn(raw: string | undefined): boolean {
   if (raw == null || String(raw).trim() === '') return true;
   const v = String(raw).trim().toLowerCase();
   return !(v === 'false' || v === '0' || v === 'off');
@@ -13,21 +15,21 @@ function isFeatureEnabled(envKey: string): boolean {
 
 export const features = {
   /** Menu + /dashboard/pengumuman + widget pengumuman di dashboard */
-  pengumuman: isFeatureEnabled('NEXT_PUBLIC_FEATURE_PENGUMUMAN'),
+  pengumuman: isOn(process.env.NEXT_PUBLIC_FEATURE_PENGUMUMAN),
   /** Menu + /dashboard/input-massal */
-  inputMassal: isFeatureEnabled('NEXT_PUBLIC_FEATURE_INPUT_MASSAL'),
+  inputMassal: isOn(process.env.NEXT_PUBLIC_FEATURE_INPUT_MASSAL),
   /** Menu + /dashboard/cetak-kartu */
-  cetakKartu: isFeatureEnabled('NEXT_PUBLIC_FEATURE_CETAK_KARTU'),
+  cetakKartu: isOn(process.env.NEXT_PUBLIC_FEATURE_CETAK_KARTU),
   /** Menu + /dashboard/laporan */
-  laporan: isFeatureEnabled('NEXT_PUBLIC_FEATURE_LAPORAN'),
+  laporan: isOn(process.env.NEXT_PUBLIC_FEATURE_LAPORAN),
   /** Tombol/salin pesan WhatsApp ke wali */
-  whatsapp: isFeatureEnabled('NEXT_PUBLIC_FEATURE_WHATSAPP'),
+  whatsapp: isOn(process.env.NEXT_PUBLIC_FEATURE_WHATSAPP),
   /** Badge + peta juz di portal wali */
-  portalBadge: isFeatureEnabled('NEXT_PUBLIC_FEATURE_PORTAL_BADGE'),
+  portalBadge: isOn(process.env.NEXT_PUBLIC_FEATURE_PORTAL_BADGE),
   /** Menu + /dashboard/absensi + rekap absensi portal */
-  absensi: isFeatureEnabled('NEXT_PUBLIC_FEATURE_ABSENSI'),
+  absensi: isOn(process.env.NEXT_PUBLIC_FEATURE_ABSENSI),
   /** Menu + /dashboard/spp (iuran/SPP bulanan) */
-  spp: isFeatureEnabled('NEXT_PUBLIC_FEATURE_SPP'),
+  spp: isOn(process.env.NEXT_PUBLIC_FEATURE_SPP),
 } as const;
 
 export type FeatureKey = keyof typeof features;
