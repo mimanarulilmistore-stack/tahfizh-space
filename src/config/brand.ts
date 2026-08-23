@@ -26,7 +26,7 @@ export const BRAND_NAME_SHORT = pick(
 
 export const BRAND_TAGLINE = pick(
   process.env.NEXT_PUBLIC_BRAND_TAGLINE,
-  "Sistem Mutaba'ah & Manajemen Hafalan Al-Qur'an"
+  'Platform Manajemen Tahfizh Terintegrasi'
 );
 
 /** Nama lembaga di kop rapor. */

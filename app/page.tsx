@@ -24,19 +24,14 @@ export default function HomePage() {
 
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-6 border border-emerald-200 dark:border-emerald-800">
           <ShieldCheck className="w-4 h-4" />
-          <span>Platform Mutaba&apos;ah &amp; Setoran Hafalan Modern</span>
+          <span>Platform Manajemen Tahfizh Terintegrasi</span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
           {BRAND_NAME}
         </h1>
-        <p className="text-base sm:text-lg text-emerald-700 dark:text-emerald-400 font-semibold mb-6">
-          Pantau Perkembangan Hafalan Al-Qur&apos;an Secara{' '}
-          <span className="underline decoration-emerald-400/50">Real-Time &amp; Terstruktur</span>
-        </p>
-
-        <p className="text-lg text-slate-600 dark:text-slate-400 mb-10 max-w-2xl leading-relaxed">
-          Kemudahan bagi Ustadz dalam mencatat setoran Ziyadah &amp; Muraja&apos;ah, serta transparansi penuh bagi Santri dan Wali Santri dalam memantau target hafalan harian.
+        <p className="text-base sm:text-lg text-emerald-700 dark:text-emerald-400 font-semibold mb-10 max-w-2xl leading-relaxed">
+          Pencatatan setoran terintegrasi untuk asatidz, santri, dan wali santri.
         </p>
 
         {/* Gate Choice / Role Access Cards */}
@@ -49,7 +44,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-lg font-bold mb-2">Portal Ustadz / Penguji</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                Akses lengkap untuk input setoran baru, penilaian kualitas tajwid/makhraj, dan kelola data santri bimbingan.
+                Input setoran Ziyadah/Muraja&apos;ah dan kelola data halaqah
               </p>
             </div>
             <Link
@@ -69,7 +64,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-lg font-bold mb-2">Santri &amp; Wali Santri</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                Akses cepat menggunakan Kode Unik / PIN Santri tanpa perlu registrasi email untuk melihat progres hafalan.
+                Pantau grafik capaian dan riwayat hafalan harian santri
               </p>
             </div>
             <Link
