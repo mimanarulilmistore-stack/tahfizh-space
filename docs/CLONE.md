@@ -85,6 +85,26 @@ NEXT_PUBLIC_FEATURE_SPP=false
 
 Menu SPP hilang; membuka `/dashboard/spp` diarahkan ke dashboard.
 
+## Logo lembaga (PNG transparan)
+
+1. Simpan file sumber ke `public/`, mis. `public/logo-rtmi-makassar-source.png`.
+2. Jalankan:
+
+```bash
+python3 scripts/process-brand-logo.py public/logo-rtmi-makassar-source.png --slug logo-rtmi-makassar
+```
+
+3. Commit 3 file hasil (`*-source.png`, `*-on-light.png`, `*-on-dark.png`).
+4. Di Vercel pembeli, set env:
+
+```
+NEXT_PUBLIC_LOGO_URL=/logo-rtmi-makassar-on-light.png
+NEXT_PUBLIC_LOGO_ON_LIGHT=/logo-rtmi-makassar-on-light.png
+NEXT_PUBLIC_LOGO_ON_DARK=/logo-rtmi-makassar-on-dark.png
+```
+
+5. Redeploy. Logo header memakai ukuran 40 / 72 / 112 px (otomatis dari `BrandLogo`).
+
 ## Catatan penting
 
 - Semua ustadz yang login melihat **semua** santri (satu lembaga per database).
