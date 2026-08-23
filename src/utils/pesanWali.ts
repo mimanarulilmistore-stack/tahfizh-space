@@ -1,3 +1,5 @@
+import { BRAND_TEAM_SIGNATURE } from '@/src/config/brand';
+
 export type PesanSetoranWaliInput = {
   namaSantri: string;
   kodeUnik?: string | null;
@@ -87,7 +89,7 @@ export function buildPesanSetoranWali(input: PesanSetoranWaliInput): string {
 
   lines.push(``);
   lines.push(`Jazakumullahu khairan.`);
-  lines.push(`— Tim Tahfizh Manarul Ilmi`);
+  lines.push(`— ${BRAND_TEAM_SIGNATURE}`);
 
   return lines.join('\n');
 }
@@ -133,7 +135,7 @@ export function buildPesanSppWali(input: PesanSppWaliInput): string {
     `Barakallahu fiikum.`,
     ``,
     `Hormat kami,`,
-    `Tim Tahfizh Manarul Ilmi`,
+    BRAND_TEAM_SIGNATURE,
   ].join('\n');
 }
 

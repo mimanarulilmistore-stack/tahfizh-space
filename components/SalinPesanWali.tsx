@@ -8,6 +8,7 @@ import {
   normalizeWaNumber,
   type PesanSetoranWaliInput,
 } from '@/src/utils/pesanWali';
+import { features } from '@/src/config/features';
 import { Check, Copy, ExternalLink, MessageCircle, X } from 'lucide-react';
 
 type SalinPesanWaliProps = {
@@ -29,6 +30,11 @@ export default function SalinPesanWali({
   const pesan = buildPesanSetoranWali(payload);
   const waUrl = buildWhatsAppClickToChatUrl(payload.noWaWali, pesan);
   const hasWa = Boolean(waUrl);
+
+  // Saklar WhatsApp mati: jangan tampilkan panel/tombol
+  if (!features.whatsapp) {
+    return null;
+  }
 
   const handleCopy = async () => {
     const ok = await copyTextToClipboard(pesan);

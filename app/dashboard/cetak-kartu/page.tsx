@@ -11,6 +11,7 @@ import {
   getPinFormatLabel,
 } from '@/src/utils/kodeUnik';
 import { getTingkatanLabel } from '@/src/utils/tingkatan';
+import { BRAND_NAME } from '@/src/config/brand';
 import {
   Printer,
   Search,
@@ -469,7 +470,7 @@ function CetakKartuPinContent() {
                         <div>
                           <div className="flex items-center gap-1.5 text-emerald-400 print:text-emerald-800 font-extrabold text-[11px] tracking-wider uppercase">
                             <ShieldCheck className="w-3.5 h-3.5" />
-                            Tahfizh Manarul Ilmi
+                            {BRAND_NAME}
                           </div>
                           <p className="text-[9px] text-slate-400 print:text-slate-600 font-medium">
                             Kartu Akses Pantau Wali Santri
