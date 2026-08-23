@@ -53,7 +53,9 @@ export default function BrandLogo({
     >
       <div
         className={`${s.box} relative shrink-0 overflow-visible ${
-          onDark ? 'drop-shadow-[0_0_10px_rgba(255,255,255,0.35)]' : ''
+          onDark
+            ? 'drop-shadow-[0_0_14px_rgba(255,255,255,0.45)] drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]'
+            : ''
         }`}
       >
         <Image
@@ -61,7 +63,9 @@ export default function BrandLogo({
           alt={`Logo ${BRAND_NAME}`}
           width={s.px}
           height={s.px}
-          className="h-full w-full object-contain"
+          className={`h-full w-full object-contain ${
+            onDark ? 'brightness-110 contrast-125 saturate-110' : ''
+          }`}
           priority={size !== 'sm'}
         />
       </div>

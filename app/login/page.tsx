@@ -170,10 +170,10 @@ function LoginContent() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             {BRAND_NAME}
           </h1>
-          <p className="text-xs sm:text-sm text-emerald-400 font-semibold">
+          <p className="text-xs sm:text-sm text-emerald-300 font-semibold">
             Portal Pengampu · Mutaba&apos;ah Santri
           </p>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-xs mx-auto">
+          <p className="text-xs sm:text-sm text-slate-200 max-w-xs mx-auto">
             Masuk dengan akun Ustadz / Pengelola untuk mengelola pencatatan hafalan.
           </p>
         </div>

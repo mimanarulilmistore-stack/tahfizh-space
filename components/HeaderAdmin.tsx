@@ -169,7 +169,7 @@ export default function HeaderAdmin() {
               <h1 className="text-sm font-bold text-white tracking-wide leading-tight">
                 {BRAND_NAME}
               </h1>
-              <p className="text-[10px] text-emerald-400 font-mono font-medium">
+              <p className="text-[10px] text-emerald-300 font-mono font-medium">
                 Admin Panel
               </p>
             </div>
