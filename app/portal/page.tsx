@@ -38,11 +38,11 @@ export default function PortalPinPage() {
           <div className="flex justify-center">
             <BrandLogo size="md" tone="onDark" />
           </div>
-          <div className="text-emerald-400 font-bold text-sm tracking-wide">
+          <div className="text-emerald-300 font-bold text-sm tracking-wide">
             {BRAND_NAME}
           </div>
           <h1 className="text-2xl font-extrabold text-white">Portal Wali Santri</h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-200">
             Masukkan PIN dari kartu anak Anda. Anda hanya akan melihat data anak tersebut.
           </p>
         </div>

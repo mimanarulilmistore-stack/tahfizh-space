@@ -29,8 +29,20 @@ def luminance(r: int, g: int, b: int) -> float:
     return 0.299 * r + 0.587 * g + 0.114 * b
 
 
+def saturation(r: int, g: int, b: int) -> float:
+    peak = max(r, g, b)
+    if peak == 0:
+        return 0.0
+    return (peak - min(r, g, b)) / peak
+
+
 def is_gold(r: int, g: int, b: int) -> bool:
     return r > 140 and g > 100 and b < 130 and r >= g >= b
+
+
+def is_neutral_fill(r: int, g: int, b: int, lum: float, sat: float) -> bool:
+    """Gradasi putih/abu di dalam bintang — bukan garis/teks berwarna."""
+    return lum > 165 and sat < 0.22
 
 
 def to_dark_pixel(r: int, g: int, b: int, a: int) -> tuple[int, int, int, int]:
@@ -39,24 +51,31 @@ def to_dark_pixel(r: int, g: int, b: int, a: int) -> tuple[int, int, int, int]:
         return (0, 0, 0, 0)
 
     lum = luminance(r, g, b)
+    sat = saturation(r, g, b)
+
+    # Latar gradasi di dalam bintang → transparan supaya tidak jadi kotak abu
+    if is_neutral_fill(r, g, b, lum, sat):
+        return (0, 0, 0, 0)
 
     if is_gold(r, g, b):
-        # Emas lebih terang & pekat (mirip logo MIO on-dark)
-        return (255, min(255, int(g * 1.08 + 20)), max(90, int(b * 0.85 + 40)), min(255, a + 40))
+        return (
+            255,
+            min(255, int(g * 1.1 + 25)),
+            max(80, int(b * 0.7 + 50)),
+            min(255, a + 55),
+        )
 
-    if lum < 115 or max(r, g, b) < 105:
-        # Teks hitam, hijau gelap, navy → putih solid
-        return (255, 255, 255, min(255, a + 60))
+    if lum < 120 or max(r, g, b) < 110:
+        # Teks hitam, hijau gelap → putih pekat
+        return (255, 255, 255, min(255, a + 75))
 
-    if lum > 210:
-        # Gradasi putih/abu di dalam bintang — biarkan agak redup di dark UI
-        return (min(255, r), min(255, g), min(255, b), max(0, a - 20))
+    if g > r + 12 and g > b + 12:
+        return (255, 255, 255, min(255, a + 65))
 
-    if g > r + 15 and g > b + 15:
-        # Hijau medium → putih agar terbaca di header gelap
-        return (255, 255, 255, min(255, a + 50))
+    if lum > 140 and sat < 0.35:
+        return (0, 0, 0, 0)
 
-    return (255, 255, 255, min(255, a + 40))
+    return (255, 255, 255, min(255, a + 55))
 
 
 def fit_square(img: Image.Image, size: int) -> Image.Image:
