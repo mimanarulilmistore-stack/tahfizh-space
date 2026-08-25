@@ -10,6 +10,7 @@ import {
   Lock,
   RefreshCw,
 } from 'lucide-react';
+import { isDemoAccountEmail } from '@/src/config/demo';
 
 const supabase = getBrowserSupabase();
 
@@ -21,6 +22,7 @@ export default function UpdatePasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [blockedDemo, setBlockedDemo] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -38,6 +40,10 @@ export default function UpdatePasswordPage() {
           router.replace('/login?error=reset_session');
           return;
         }
+
+        if (isDemoAccountEmail(session.user?.email)) {
+          setBlockedDemo(true);
+        }
       } catch {
         router.replace('/login?error=reset_session');
         return;
@@ -53,6 +59,10 @@ export default function UpdatePasswordPage() {
     e.preventDefault();
     setError(null);
 
+    if (blockedDemo) {
+      setError('Akun demo tidak dapat mengubah kata sandi.');
+      return;
+    }
     if (password.length < 8) {
       setError('Kata sandi baru minimal 8 karakter.');
       return;
@@ -64,6 +74,13 @@ export default function UpdatePasswordPage() {
 
     setLoading(true);
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (isDemoAccountEmail(user?.email)) {
+        throw new Error('Akun demo tidak dapat mengubah kata sandi.');
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({
         password,
       });
@@ -113,7 +130,21 @@ export default function UpdatePasswordPage() {
           </div>
         )}
 
-        {success ? (
+        {blockedDemo ? (
+          <div className="p-4 rounded-xl bg-amber-950/50 border border-amber-800/60 text-amber-100 text-sm space-y-3">
+            <p>
+              Akun demo tidak dapat mengubah kata sandi. Gunakan kata sandi yang
+              sudah diberikan oleh pengelola.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.assign('/dashboard')}
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl"
+            >
+              Kembali ke Dashboard
+            </button>
+          </div>
+        ) : success ? (
           <div className="p-4 rounded-xl bg-emerald-950/70 border border-emerald-800/80 text-emerald-200 text-sm flex gap-2">
             <CheckCircle2 className="w-5 h-5 shrink-0" />
             Kata sandi berhasil diperbarui. Mengalihkan...
