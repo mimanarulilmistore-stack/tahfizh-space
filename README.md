@@ -15,9 +15,12 @@ Buka [http://localhost:3000](http://localhost:3000).
 
 ## Clone untuk pembeli (white-label)
 
-Ikuti panduan lengkap: **[docs/CLONE.md](docs/CLONE.md)**
+**Disarankan (Supabase + Vercel milik pembeli):**  
+**[docs/SETUP-PEMBELI.md](docs/SETUP-PEMBELI.md)** — panduan step-by-step agar kuota Free / tagihan di akun Anda tidak bertambah.
 
-Ringkas: proyek Supabase baru → jalankan `supabase/schema.sql` → akun ustadz → proyek Vercel baru → isi env merek + saklar fitur.
+Detail teknis (saklar fitur, logo, catatan skema): **[docs/CLONE.md](docs/CLONE.md)**
+
+Ringkas: proyek Supabase pembeli → `schema.sql` → akun ustadz → proyek Vercel pembeli → isi env merek + saklar fitur.
 
 Contoh matikan SPP/iuran untuk satu pembeli:
 

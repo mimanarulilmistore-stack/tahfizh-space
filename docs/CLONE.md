@@ -3,6 +3,8 @@
 Satu pembeli = **satu proyek Vercel + satu proyek Supabase kosong**.  
 Jangan salin data santri, setoran, atau kunci API lembaga lain.
 
+> **Setup milik pembeli (disarankan):** agar kuota Free / tagihan di akun Anda tidak bertambah, ikuti panduan step-by-step **[SETUP-PEMBELI.md](SETUP-PEMBELI.md)** (Supabase + Vercel di akun customer, GitHub tetap di Anda).
+
 ## Yang dibawa
 
 - Kode aplikasi (repo / zip)
