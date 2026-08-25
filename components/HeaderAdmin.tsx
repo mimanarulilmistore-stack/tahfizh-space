@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getBrowserSupabase } from '@/src/lib/supabase';
 import BrandLogo from '@/components/BrandLogo';
 import { BRAND_NAME } from '@/src/config/brand';
+import { isDemoAccountEmail } from '@/src/config/demo';
 import { features } from '@/src/config/features';
 import { 
   LayoutDashboard, 
@@ -44,6 +45,27 @@ export default function HeaderAdmin() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [canChangePassword, setCanChangePassword] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadUser = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!cancelled) {
+          setCanChangePassword(!isDemoAccountEmail(user?.email));
+        }
+      } catch {
+        if (!cancelled) setCanChangePassword(true);
+      }
+    };
+    void loadUser();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const navItems: NavItem[] = [
     {
@@ -107,6 +129,7 @@ export default function HeaderAdmin() {
   };
 
   const openPasswordModal = () => {
+    if (!canChangePassword) return;
     setNewPassword('');
     setConfirmPassword('');
     setPasswordError(null);
@@ -118,6 +141,10 @@ export default function HeaderAdmin() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
+    if (!canChangePassword) {
+      setPasswordError('Akun demo tidak dapat mengubah kata sandi.');
+      return;
+    }
     if (newPassword.length < 8) {
       setPasswordError('Kata sandi baru minimal 8 karakter.');
       return;
@@ -128,6 +155,12 @@ export default function HeaderAdmin() {
     }
     setPasswordLoading(true);
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (isDemoAccountEmail(user?.email)) {
+        throw new Error('Akun demo tidak dapat mengubah kata sandi.');
+      }
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       setPasswordSuccess(true);
@@ -191,14 +224,16 @@ export default function HeaderAdmin() {
 
             <div className="h-4 w-[1px] bg-slate-800 mx-2" />
 
-            <button
-              onClick={openPasswordModal}
-              className="px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all flex items-center gap-1.5"
-              title="Ubah kata sandi"
-            >
-              <KeyRound className="w-4 h-4 text-amber-400" />
-              Sandi
-            </button>
+            {canChangePassword ? (
+              <button
+                onClick={openPasswordModal}
+                className="px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all flex items-center gap-1.5"
+                title="Ubah kata sandi"
+              >
+                <KeyRound className="w-4 h-4 text-amber-400" />
+                Sandi
+              </button>
+            ) : null}
 
             <button
               onClick={handleLogout}
@@ -240,13 +275,17 @@ export default function HeaderAdmin() {
             </button>
           ))}
 
-          <button
-            onClick={openPasswordModal}
-            className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 mt-2 border-t border-slate-800/80 pt-3"
-          >
-            <KeyRound className="w-4 h-4 text-amber-400" />
-            Ubah Kata Sandi
-          </button>
+          {canChangePassword ? (
+            <button
+              onClick={openPasswordModal}
+              className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 mt-2 border-t border-slate-800/80 pt-3"
+            >
+              <KeyRound className="w-4 h-4 text-amber-400" />
+              Ubah Kata Sandi
+            </button>
+          ) : (
+            <div className="mt-2 border-t border-slate-800/80 pt-3" />
+          )}
 
           <button
             onClick={handleLogout}
@@ -258,7 +297,7 @@ export default function HeaderAdmin() {
         </div>
       )}
 
-      {passwordModalOpen && (
+      {canChangePassword && passwordModalOpen ? (
         <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
@@ -329,7 +368,7 @@ export default function HeaderAdmin() {
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </header>
   );
 }

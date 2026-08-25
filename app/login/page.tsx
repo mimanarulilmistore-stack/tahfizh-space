@@ -17,6 +17,7 @@ import {
 import { Suspense } from 'react';
 import BrandLogo from '@/components/BrandLogo';
 import { BRAND_NAME } from '@/src/config/brand';
+import { isDemoAccountEmail } from '@/src/config/demo';
 
 const supabase = getBrowserSupabase();
 
@@ -120,6 +121,12 @@ function LoginContent() {
     const target = resetEmail.trim();
     if (!target) {
       setResetError('Masukkan email akun ustadz Anda.');
+      return;
+    }
+    if (isDemoAccountEmail(target)) {
+      setResetError(
+        'Akun demo tidak dapat mereset kata sandi. Gunakan kata sandi yang sudah diberikan.'
+      );
       return;
     }
 
